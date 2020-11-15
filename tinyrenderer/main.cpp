@@ -121,7 +121,7 @@ int main(int argc, char** argv) {
     triangle(pts, frame, red);
 
     frame.flip_vertically();
-    frame.write_tga_file("lesson02_self.tga");
+    frame.write_tga_file("output/lesson02_self.tga");
     delete model;
     return 0;
 }
