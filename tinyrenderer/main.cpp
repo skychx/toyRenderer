@@ -15,8 +15,8 @@
 const TGAColor white = TGAColor(255, 255, 255, 255);
 const TGAColor red   = TGAColor(255, 0,   0,   255);
 Model *model = NULL;
-const int width  = 200;
-const int height = 200;
+const int width  = 800;
+const int height = 800;
 
 // 思路很简单，点连成线
 void line(int x0, int y0, int x1, int y1, TGAImage &image, TGAColor color) {
@@ -72,7 +72,7 @@ bool isInside(Vec2i *pts, Vec2i P) {
     Vec2i BP(P.x - pts[1].x, P.y - pts[1].y);
     Vec2i CP(P.x - pts[2].x, P.y - pts[2].y);
     
-    if((AB^AP) > 0 && (BC^BP) > 0 && (CA^CP) > 0) {
+    if((AB^AP) >= 0 && (BC^BP) >= 0 && (CA^CP) >= 0) {
         return true;
     }
     return false;
@@ -112,16 +112,47 @@ void triangle(Vec2i *pts, TGAImage &image, TGAColor color) {
     }
 }
 
-
-int main(int argc, char** argv) {
-    TGAImage frame(width, height, TGAImage::RGB);
-
+void drawSingleTriangle() {
+    TGAImage frame(200, 200, TGAImage::RGB);
     Vec2i pts[3] = {Vec2i(10, 10), Vec2i(150, 30), Vec2i(70, 160)};
-
+    
     triangle(pts, frame, red);
-
+    
     frame.flip_vertically();
     frame.write_tga_file("output/lesson02_self.tga");
+}
+
+
+void drawModelTriangle() {
+    TGAImage frame(width, height, TGAImage::RGB);
+    
+    for (int i = 0; i < model->nfaces(); i++) {
+        std::vector<int> face = model->face(i);
+        Vec2i screen_coords[3];
+        for (int j = 0; j < 3; j++) {
+            Vec3f world_coords = model->vert(face[j]);
+            screen_coords[j] = Vec2i((world_coords.x + 1.) * width / 2., (world_coords.y + 1.) * height / 2.);
+        }
+        triangle(screen_coords, frame, TGAColor(rand() % 255, rand() % 255, rand() % 255, 255));
+    }
+    
+    
+    frame.flip_vertically();
+    frame.write_tga_file("output/lesson02_rand_colors_model.tga");
+    
     delete model;
+}
+
+
+
+int main(int argc, char** argv) {
+    if (2 == argc) {
+        model = new Model(argv[1]);
+    } else {
+        model = new Model("obj/african_head.obj");
+    }
+//    drawSingleTriangle();
+    drawModelTriangle();
+
     return 0;
 }
