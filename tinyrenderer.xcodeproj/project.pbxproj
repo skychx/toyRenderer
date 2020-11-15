@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		6C7EA9C52560CC2200B9364F /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 6C7EA9C42560CC2200B9364F /* main.cpp */; };
 		6C7EA9CE2560CCCB00B9364F /* tgaimage.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 6C7EA9CC2560CCCB00B9364F /* tgaimage.cpp */; };
+		6C7EA9D62560DE6A00B9364F /* model.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 6C7EA9D42560DE6A00B9364F /* model.cpp */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -28,6 +29,10 @@
 		6C7EA9C42560CC2200B9364F /* main.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
 		6C7EA9CC2560CCCB00B9364F /* tgaimage.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = tgaimage.cpp; sourceTree = "<group>"; };
 		6C7EA9CD2560CCCB00B9364F /* tgaimage.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = tgaimage.h; sourceTree = "<group>"; };
+		6C7EA9D42560DE6A00B9364F /* model.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = model.cpp; sourceTree = "<group>"; };
+		6C7EA9D52560DE6A00B9364F /* model.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = model.h; sourceTree = "<group>"; };
+		6C7EA9DA2560DF4B00B9364F /* geometry.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = geometry.h; sourceTree = "<group>"; };
+		6C7EA9DB2560DF7000B9364F /* african_head.obj */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = african_head.obj; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -60,11 +65,23 @@
 		6C7EA9C32560CC2200B9364F /* tinyrenderer */ = {
 			isa = PBXGroup;
 			children = (
+				6C7EA9D12560DDCE00B9364F /* obj */,
 				6C7EA9C42560CC2200B9364F /* main.cpp */,
 				6C7EA9CC2560CCCB00B9364F /* tgaimage.cpp */,
 				6C7EA9CD2560CCCB00B9364F /* tgaimage.h */,
+				6C7EA9D42560DE6A00B9364F /* model.cpp */,
+				6C7EA9D52560DE6A00B9364F /* model.h */,
+				6C7EA9DA2560DF4B00B9364F /* geometry.h */,
 			);
 			path = tinyrenderer;
+			sourceTree = "<group>";
+		};
+		6C7EA9D12560DDCE00B9364F /* obj */ = {
+			isa = PBXGroup;
+			children = (
+				6C7EA9DB2560DF7000B9364F /* african_head.obj */,
+			);
+			path = obj;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -125,6 +142,7 @@
 			files = (
 				6C7EA9CE2560CCCB00B9364F /* tgaimage.cpp in Sources */,
 				6C7EA9C52560CC2200B9364F /* main.cpp in Sources */,
+				6C7EA9D62560DE6A00B9364F /* model.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
