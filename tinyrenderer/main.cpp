@@ -126,19 +126,45 @@ void drawSingleTriangle() {
 void drawModelTriangle() {
     TGAImage frame(width, height, TGAImage::RGB);
     
+    // 遍历模型里的每个三角形，然后随机着色
+//    for (int i = 0; i < model->nfaces(); i++) {
+//        std::vector<int> face = model->face(i);
+//        Vec2i screen_coords[3];
+//        for (int j = 0; j < 3; j++) {
+//            Vec3f world_coords = model->vert(face[j]);
+//            screen_coords[j] = Vec2i((world_coords.x + 1.) * width / 2., (world_coords.y + 1.) * height / 2.);
+//        }
+//        triangle(screen_coords, frame, TGAColor(rand() % 255, rand() % 255, rand() % 255, 255));
+//    }
+    
+    // 这个是用一个模拟光照对三角形进行着色
+    Vec3f light_dir(0, 0, -1); // 假设光是垂直屏幕的
     for (int i = 0; i < model->nfaces(); i++) {
         std::vector<int> face = model->face(i);
         Vec2i screen_coords[3];
+        Vec3f world_coords[3];
+        
+        // 计算世界坐标和屏幕坐标
         for (int j = 0; j < 3; j++) {
-            Vec3f world_coords = model->vert(face[j]);
-            screen_coords[j] = Vec2i((world_coords.x + 1.) * width / 2., (world_coords.y + 1.) * height / 2.);
+            Vec3f v = model->vert(face[j]);
+            screen_coords[j] = Vec2i((v.x + 1.) * width / 2., (v.y + 1.) * height / 2.);
+            world_coords[j]  = v;
         }
-        triangle(screen_coords, frame, TGAColor(rand() % 255, rand() % 255, rand() % 255, 255));
+        
+        // 计算世界坐标中某个三角形的法线（法线 = 三角形任意两条边做叉乘）
+        Vec3f n = (world_coords[2] - world_coords[0]) ^ (world_coords[1] - world_coords[0]);
+        n.normalize(); // 对 n 做归一化处理
+        
+        // 三角形法线和光照方向做点乘，点乘值大于 0，说明法线方向和光照方向在同一侧
+        // 值越大，说明越多的光照射到三角形上，颜色越白
+        float intensity = n * light_dir;
+        if (intensity > 0) {
+            triangle(screen_coords, frame, TGAColor(intensity * 255, intensity * 255, intensity * 255, 255));
+        }
     }
     
-    
     frame.flip_vertically();
-    frame.write_tga_file("output/lesson02_rand_colors_model.tga");
+    frame.write_tga_file("output/lesson02_light_model.tga");
     
     delete model;
 }
