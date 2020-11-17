@@ -147,6 +147,7 @@ void drawModelTriangle() {
         // 计算世界坐标和屏幕坐标
         for (int j = 0; j < 3; j++) {
             Vec3f v = model->vert(face[j]);
+            // 投影为正交投影，而且只做了个简单的视口变换
             screen_coords[j] = Vec2i((v.x + 1.) * width / 2., (v.y + 1.) * height / 2.);
             world_coords[j]  = v;
         }
