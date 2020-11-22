@@ -13,36 +13,39 @@
 #include "geometry.h"
 
 const TGAColor white = TGAColor(255, 255, 255, 255);
-const TGAColor red   = TGAColor(255, 0,   0,   255);
+const TGAColor red   = TGAColor(255,   0,   0, 255);
+const TGAColor green = TGAColor(  0, 255,   0, 255);
+const TGAColor blue  = TGAColor(  0,   0, 255, 255);
+
 Model *model = NULL;
 const int width  = 800;
 const int height = 800;
 
 // 思路很简单，点连成线
-void line(int x0, int y0, int x1, int y1, TGAImage &image, TGAColor color) {
+void line(Vec2i p0, Vec2i p1, TGAImage &image, TGAColor color) {
     // 处理比较陡的线：交换 x y 位置
     bool steep = false;
-    if (std::abs(x0 - x1)<std::abs(y0 - y1)) {
-        std::swap(x0, y0);
-        std::swap(x1, y1);
+    if (std::abs(p0.x - p1.x) < std::abs(p0.y - p1.y)) {
+        std::swap(p0.x, p0.y);
+        std::swap(p1.x, p1.y);
         steep = true;
     }
     // 处理 x0 > x1 的情况
-    if (x0 > x1) {
-        std::swap(x0, x1);
-        std::swap(y0, y1);
+    if (p0.x > p1.x) {
+        std::swap(p0.x, p1.x);
+        std::swap(p0.y, p1.y);
     }
     // 缓存偏移量
-    int dx = x1-x0;
-    int dy = y1-y0;
+    int dx = p1.x - p0.x;
+    int dy = p1.y - p0.y;
     // 存储误差
     // float derror = std::abs(dy / float(dx)); // 每次循环增加的小误差
     // float error = 0; // 累积误差
     // 浮点运算肯定没有 int 快，我们想办法去掉浮点运算
     int derror2 = std::abs(dy) * 2;
     int error2 = 0;
-    int y = y0;
-    for (int x=x0; x<=x1; x++) {
+    int y = p0.y;
+    for (int x = p0.x; x <= p1.x; x++) {
         if (steep) {
             image.set(y, x, color);
         } else {
@@ -51,12 +54,12 @@ void line(int x0, int y0, int x1, int y1, TGAImage &image, TGAColor color) {
         // 误差的处理：每次误差大于一个像素时，y 就要进位 1，相应的累积误差也要减小 1
         // error += derror;
         // if (error > .5) {
-            // y += (y1 > y0 ? 1 : -1);
+            // y += (p1.y > p0.y ? 1 : -1);
             // error -= 1.;
         // }
         error2 += derror2;
         if (error2 > dx) {
-            y += (y1 > y0 ? 1 : -1);
+            y += (p1.y > p0.y ? 1 : -1);
             error2 -= dx * 2;
         }
     }
@@ -122,6 +125,67 @@ void drawSingleTriangle() {
     frame.write_tga_file("output/lesson02_self.tga");
 }
 
+void rasterize(Vec2i p0, Vec2i p1, TGAImage &image, TGAColor color, int ybuffer[]) {
+    if (p0.x > p1.x) {
+        std::swap(p0, p1);
+    }
+    
+    for (int x = p0.x; x < p1.x; x++) {
+        // 这里的公式很简单，利用直线的「两点式」求未知数：
+        // t = (x - p0.x) / (p1.x - p0.x) = (y - p0.y) / (p1.y - p0.y)
+        float t = (x - p0.x) / (float)(p1.x - p0.x);
+        int y = (p1.y - p0.y) * t + p0.y + 0.5;
+        
+        // ybuffer 只记录最大值
+        if (y > ybuffer[x]) {
+            ybuffer[x] = y;
+            image.set(x, 0, color);
+        }
+    }
+}
+
+void drawYbuffer() {
+    // 画三条交叉的线
+    {
+        TGAImage frame(800, 800, TGAImage::RGB);
+        
+        line(Vec2i(20, 34),   Vec2i(744, 400), frame, red);
+        line(Vec2i(120, 434), Vec2i(444, 400), frame, green);
+        line(Vec2i(330, 463), Vec2i(594, 200), frame, blue);
+
+        line(Vec2i(10, 10), Vec2i(790, 10), frame, white);
+        
+        frame.flip_vertically();
+        frame.write_tga_file("output/lesson03_y_buffer_line.tga");
+    }
+    
+    // 根据上面的三条线绘制 Y-buffer
+    {
+        int width = 800;
+        TGAImage ybufferRender(width, 16, TGAImage::RGB);
+        
+        // ybuffer 中默认存储 int 类型的最小值，即 -2147483648
+        int ybuffer[width];
+        for (int i=0; i < width; i++) {
+            ybuffer[i] = std::numeric_limits<int>::min();
+        }
+        
+        rasterize(Vec2i(20, 34),   Vec2i(744, 400), ybufferRender, red,   ybuffer);
+        rasterize(Vec2i(120, 434), Vec2i(444, 400), ybufferRender, green, ybuffer);
+        rasterize(Vec2i(330, 463), Vec2i(594, 200), ybufferRender, blue,  ybuffer);
+        
+        // 把 1px 的 ybuffer 扩展为 16px，易于展示
+        for (int i=0; i<width; i++) {
+            for (int j=1; j<16; j++) {
+                ybufferRender.set(i, j, ybufferRender.get(i, 0));
+            }
+        }
+        
+        ybufferRender.flip_vertically();
+        ybufferRender.write_tga_file("output/lesson03_y_buffer.tga");
+    }
+
+}
 
 void drawModelTriangle() {
     TGAImage frame(width, height, TGAImage::RGB);
@@ -179,7 +243,9 @@ int main(int argc, char** argv) {
         model = new Model("obj/african_head.obj");
     }
 //    drawSingleTriangle();
-    drawModelTriangle();
+//    drawModelTriangle();
+    
+    drawYbuffer();
 
     return 0;
 }
