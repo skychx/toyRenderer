@@ -133,6 +133,8 @@ void rasterize(Vec2i p0, Vec2i p1, TGAImage &image, TGAColor color, int ybuffer[
     for (int x = p0.x; x < p1.x; x++) {
         // 这里的公式很简单，利用直线的「两点式」求未知数：
         // t = (x - p0.x) / (p1.x - p0.x) = (y - p0.y) / (p1.y - p0.y)
+        // 官方实现中，y = p0.y * (1. - t) + p1.y * t，(1 - t, t)
+        // (1-t, t) 这个比例告诉我们，(x, y) 其实是 p0p1 这条线段的重心坐标，这样我们可以很方便的把概念迁移到三角形中
         float t = (x - p0.x) / (float)(p1.x - p0.x);
         int y = (p1.y - p0.y) * t + p0.y + 0.5;
         
