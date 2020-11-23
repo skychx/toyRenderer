@@ -88,18 +88,22 @@ bool isInside(Vec3f *pts, Vec2i P) {
     return false;
 }
 
-// 利用重心坐标求解
+// 利用重心坐标求解，返回三角形的重心坐标
 Vec3f barycentric(Vec3f A, Vec3f B, Vec3f C, Vec3f P) {
-    Vec3f s[2];
-    for (int i = 2; i--; ) {
-        s[i][0] = C[i] - A[i];
-        s[i][1] = B[i] - A[i];
-        s[i][2] = A[i] - P[i];
-    }
-    Vec3f u = cross(s[0], s[1]);
-    if (std::abs(u[2]) > 1e-2) // dont forget that u[2] is integer. If it is zero then triangle ABC is degenerate
+    
+    Vec3f x(C[0] - A[0], B[0] - A[0], A[0] - P[0]); // AB AC PA 在 x 上的分量
+    Vec3f y(C[1] - A[1], B[1] - A[1], A[1] - P[1]); // AB AC PA 在 y 上的分量
+
+    Vec3f u = cross(x, y); // u 向量和 x y 点乘都为 0，所以 u 垂直于 xy 平面
+    
+    // dont forget that u[2] is integer. If it is zero then triangle ABC is degenerate
+    // 根据 u[2] 判断法线是向内的还是向外的，向内的抛弃，向外的保留并归一化
+    if (std::abs(u[2]) > 1e-2) {
         return Vec3f(1.f - (u.x + u.y) / u.z, u.y / u.z, u.x / u.z);
-    return Vec3f(-1, 1, 1); // in this case generate negative coordinates, it will be thrown away by the rasterizator
+    }
+    
+    // in this case generate negative coordinates, it will be thrown away by the rasterizator
+    return Vec3f(-1, 1, 1);
 }
 
 // 自己实现的三角形光栅化函数
@@ -124,12 +128,29 @@ void triangle(Vec3f *pts, float *zbuffer, TGAImage &image, TGAColor color) {
     
 //    std::cout << "boxmin: " << boxmin << "boxmax: "  << boxmax << std::endl;
     
-    
-    // 步骤 2: 包围盒内的每一个像素和三角形顶点连线做叉乘
-    Vec2i P;
+    // 步骤二：对包围盒里的每一个像素进行遍历
+    Vec3f P;
     for (P.x = boxmin.x; P.x <= boxmax.x; P.x++) {
         for (P.y = boxmin.y; P.y <= boxmax.y; P.y++) {
-            if (isInside(pts, P)) {
+            // if (isInside(pts, P)) {
+            //     image.set(P.x, P.y, color);
+            // }
+            Vec3f bc = barycentric(pts[0], pts[1], pts[2], P); // bc 是 Barycentric Coordinates 的缩写
+
+            // 重心坐标某一项小于 0，说明在三角形外，跳过不绘制
+            if (bc.x < 0 || bc.y < 0 || bc.z < 0) {
+                continue;
+            }
+            
+            // 计算当前像素的 zbuffer
+            P.z = 0;
+            for (int i = 0; i < 3; i++) {
+                P.z += pts[i][2] * bc[i];
+            }
+            
+            // 更新总的 zbuffer 并绘制
+            if(zbuffer[int(P.x + P.y * width)] < P.z) {
+                zbuffer[int(P.x + P.y * width)] = P.z;
                 image.set(P.x, P.y, color);
             }
         }
@@ -184,6 +205,12 @@ void drawModelTriangle() {
         Vec3f n = cross((world_coords[2] - world_coords[0]), (world_coords[1] - world_coords[0]));
         
         float intensity = lightIntensity(n);
+        
+        // 因为 zbuffer 已经记录深度值了，根据光照角度的不严谨判断就可以去掉了
+        // （加上也无妨，因为可以节省一些分支运算，但是本教程为原理解释，不多考虑性能问题）
+        // if (intensity > 0) {
+        //     triangle(screen_coords, zbuffer, frame, TGAColor(intensity * 255, intensity * 255, intensity * 255, 255));
+        // }
         triangle(screen_coords, zbuffer, frame, TGAColor(intensity * 255, intensity * 255, intensity * 255, 255));
     }
     
