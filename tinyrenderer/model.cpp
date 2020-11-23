@@ -22,13 +22,11 @@ Model::Model(const char *filename) : verts_(), faces_() {
         std::istringstream iss(line.c_str());
         char trash;
         if (!line.compare(0, 2, "v ")) {
-            // 处理几何顶点
             iss >> trash;
             Vec3f v;
-            for (int i=0;i<3;i++) iss >> v.raw[i];
+            for (int i=0;i<3;i++) iss >> v[i];
             verts_.push_back(v);
         } else if (!line.compare(0, 2, "f ")) {
-            // 处理顶点坐标
             std::vector<int> f;
             int itrash, idx;
             iss >> trash;

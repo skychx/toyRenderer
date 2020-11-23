@@ -8,6 +8,8 @@
 #include <iostream>
 #include <vector>
 #include <cmath>
+#include <cstdlib>
+#include <limits>
 #include "tgaimage.h"
 #include "model.h"
 #include "geometry.h"
@@ -66,42 +68,61 @@ void line(Vec2i p0, Vec2i p1, TGAImage &image, TGAColor color) {
 }
 
 // 利用叉乘判断是否在三角形内部
-bool isInside(Vec2i *pts, Vec2i P) {
+bool isInside(Vec3f *pts, Vec2i P) {
     Vec2i AB(pts[1].x - pts[0].x, pts[1].y - pts[0].y);
     Vec2i BC(pts[2].x - pts[1].x, pts[2].y - pts[1].y);
     Vec2i CA(pts[0].x - pts[2].x, pts[0].y - pts[2].y);
-    
+
     Vec2i AP(P.x - pts[0].x, P.y - pts[0].y);
     Vec2i BP(P.x - pts[1].x, P.y - pts[1].y);
     Vec2i CP(P.x - pts[2].x, P.y - pts[2].y);
-    
-    if((AB^AP) >= 0 && (BC^BP) >= 0 && (CA^CP) >= 0) {
+
+    // 叉乘计算
+    if(
+       (AB.x * AP.y - AP.x * AB.y) >= 0 &&
+       (BC.x * BP.y - BP.x * BC.y) >= 0 &&
+       (CA.x * CP.y - CP.x * CA.y) >= 0
+    ) {
         return true;
     }
     return false;
 }
 
+// 利用重心坐标求解
+Vec3f barycentric(Vec3f A, Vec3f B, Vec3f C, Vec3f P) {
+    Vec3f s[2];
+    for (int i = 2; i--; ) {
+        s[i][0] = C[i] - A[i];
+        s[i][1] = B[i] - A[i];
+        s[i][2] = A[i] - P[i];
+    }
+    Vec3f u = cross(s[0], s[1]);
+    if (std::abs(u[2]) > 1e-2) // dont forget that u[2] is integer. If it is zero then triangle ABC is degenerate
+        return Vec3f(1.f - (u.x + u.y) / u.z, u.y / u.z, u.x / u.z);
+    return Vec3f(-1, 1, 1); // in this case generate negative coordinates, it will be thrown away by the rasterizator
+}
+
 // 自己实现的三角形光栅化函数
 // 主要思路是遍历 Box 中的每一个像素，和三角形的三个点做叉乘，如果叉乘均为正，着色；有一个负数，不着色
-void triangle(Vec2i *pts, TGAImage &image, TGAColor color) {
+void triangle(Vec3f *pts, float *zbuffer, TGAImage &image, TGAColor color) {
     // 步骤 1: 找出包围盒
-    Vec2i boxmin(image.get_width() - 1, image.get_height() - 1);
-    Vec2i boxmax(0, 0);
-    Vec2i clamp(image.get_width() - 1, image.get_height() - 1); // 图片的边界
+    Vec2f boxmin(image.get_width() - 1, image.get_height() - 1);
+    Vec2f boxmax(0, 0);
+    Vec2f clamp(image.get_width() - 1, image.get_height() - 1); // 图片的边界
     // 查找包围盒边界
     for (int i = 0; i < 3; i++) {
         // 第一层循环，遍历 pts
         for (int j = 0; j < 2; j++) {
             // 第二层循环，遍历 Vec2i
-            boxmin.x = std::max(0,        std::min(boxmin.x, pts[i].x));
-            boxmin.y = std::max(0,        std::min(boxmin.y, pts[i].y));
+            boxmin.x = std::max(0.f,        std::min(boxmin.x, pts[i].x));
+            boxmin.y = std::max(0.f,        std::min(boxmin.y, pts[i].y));
             
             boxmax.x = std::min(clamp.x, std::max(boxmax.x, pts[i].x));
             boxmax.y = std::min(clamp.y, std::max(boxmax.y, pts[i].y));
         }
     }
     
-    std::cout << "boxmin: " << boxmin << "boxmax: "  << boxmax << std::endl;
+//    std::cout << "boxmin: " << boxmin << "boxmax: "  << boxmax << std::endl;
     
     
     // 步骤 2: 包围盒内的每一个像素和三角形顶点连线做叉乘
@@ -115,128 +136,62 @@ void triangle(Vec2i *pts, TGAImage &image, TGAColor color) {
     }
 }
 
-void drawSingleTriangle() {
-    TGAImage frame(200, 200, TGAImage::RGB);
-    Vec2i pts[3] = {Vec2i(10, 10), Vec2i(150, 30), Vec2i(70, 160)};
-    
-    triangle(pts, frame, red);
-    
-    frame.flip_vertically();
-    frame.write_tga_file("output/lesson02_self.tga");
+Vec3f world2screen(Vec3f v) {
+    return Vec3f(int((v.x + 1.0) * width / 2.0 + 0.5), int((v.y + 1.0) * height / 2.0 + 0.5), v.z);
 }
 
-void rasterize(Vec2i p0, Vec2i p1, TGAImage &image, TGAColor color, int ybuffer[]) {
-    if (p0.x > p1.x) {
-        std::swap(p0, p1);
-    }
+float lightIntensity(Vec3f n) {
+    // 这个是用一个模拟光照对三角形进行着色
+    Vec3f light_dir(0, 0, -1); // 假设光是垂直屏幕的
     
-    for (int x = p0.x; x < p1.x; x++) {
-        // 这里的公式很简单，利用直线的「两点式」求未知数：
-        // t = (x - p0.x) / (p1.x - p0.x) = (y - p0.y) / (p1.y - p0.y)
-        // 官方实现中，y = p0.y * (1. - t) + p1.y * t，(1 - t, t)
-        // (1-t, t) 这个比例告诉我们，(x, y) 其实是 p0p1 这条线段的重心坐标，这样我们可以很方便的把概念迁移到三角形中
-        float t = (x - p0.x) / (float)(p1.x - p0.x);
-        int y = (p1.y - p0.y) * t + p0.y + 0.5;
-        
-        // ybuffer 只记录最大值
-        if (y > ybuffer[x]) {
-            ybuffer[x] = y;
-            image.set(x, 0, color);
-        }
-    }
-}
+    // 计算世界坐标中某个三角形的法线（法线 = 三角形任意两条边做叉乘）
+    // Vec3f n = (worldCoords[2] - worldCoords[0]) ^ (worldCoords[1] - worldCoords[0]);
+    n.normalize(); // 对 n 做归一化处理
 
-void drawYbuffer() {
-    // 画三条交叉的线
-    {
-        TGAImage frame(800, 800, TGAImage::RGB);
-        
-        line(Vec2i(20, 34),   Vec2i(744, 400), frame, red);
-        line(Vec2i(120, 434), Vec2i(444, 400), frame, green);
-        line(Vec2i(330, 463), Vec2i(594, 200), frame, blue);
-
-        line(Vec2i(10, 10), Vec2i(790, 10), frame, white);
-        
-        frame.flip_vertically();
-        frame.write_tga_file("output/lesson03_y_buffer_line.tga");
-    }
-    
-    // 根据上面的三条线绘制 Y-buffer
-    {
-        int width = 800;
-        TGAImage ybufferRender(width, 16, TGAImage::RGB);
-        
-        // ybuffer 中默认存储 int 类型的最小值，即 -2147483648
-        int ybuffer[width];
-        for (int i=0; i < width; i++) {
-            ybuffer[i] = std::numeric_limits<int>::min();
-        }
-        
-        rasterize(Vec2i(20, 34),   Vec2i(744, 400), ybufferRender, red,   ybuffer);
-        rasterize(Vec2i(120, 434), Vec2i(444, 400), ybufferRender, green, ybuffer);
-        rasterize(Vec2i(330, 463), Vec2i(594, 200), ybufferRender, blue,  ybuffer);
-        
-        // 把 1px 的 ybuffer 扩展为 16px，易于展示
-        for (int i=0; i<width; i++) {
-            for (int j=1; j<16; j++) {
-                ybufferRender.set(i, j, ybufferRender.get(i, 0));
-            }
-        }
-        
-        ybufferRender.flip_vertically();
-        ybufferRender.write_tga_file("output/lesson03_y_buffer.tga");
-    }
-
+    // 三角形法线和光照方向做点乘，点乘值大于 0，说明法线方向和光照方向在同一侧
+    // 值越大，说明越多的光照射到三角形上，颜色越白
+    return n * light_dir;
 }
 
 void drawModelTriangle() {
     TGAImage frame(width, height, TGAImage::RGB);
     
-    // 遍历模型里的每个三角形，然后随机着色
-//    for (int i = 0; i < model->nfaces(); i++) {
-//        std::vector<int> face = model->face(i);
-//        Vec2i screen_coords[3];
-//        for (int j = 0; j < 3; j++) {
-//            Vec3f world_coords = model->vert(face[j]);
-//            screen_coords[j] = Vec2i((world_coords.x + 1.) * width / 2., (world_coords.y + 1.) * height / 2.);
-//        }
-//        triangle(screen_coords, frame, TGAColor(rand() % 255, rand() % 255, rand() % 255, 255));
-//    }
+    // 初始化 zbuffer
+    // 按道理来说 zbuffer 应该是个二维向量，这里只是用一维表示二维
+    // [[1, 2, 3],       [1, 2, 3,
+    //  [4, 5, 6],   =>   4, 5, 6,
+    //  [7, 8, 9]]        7, 8, 9],
+    float *zbuffer = new float[width * height];
+    for (int i = width * height;
+         i--;
+         zbuffer[i] = -std::numeric_limits<float>::max()
+    );
     
-    // 这个是用一个模拟光照对三角形进行着色
-    Vec3f light_dir(0, 0, -1); // 假设光是垂直屏幕的
+    // 遍历所有三角形
     for (int i = 0; i < model->nfaces(); i++) {
         std::vector<int> face = model->face(i);
-        Vec2i screen_coords[3];
+        Vec3f screen_coords[3];
         Vec3f world_coords[3];
         
-        // 计算世界坐标和屏幕坐标
+        // 每个三角形的顶点都是一个三维向量
         for (int j = 0; j < 3; j++) {
             Vec3f v = model->vert(face[j]);
-            // 投影为正交投影，而且只做了个简单的视口变换
-            screen_coords[j] = Vec2i((v.x + 1.) * width / 2., (v.y + 1.) * height / 2.);
             world_coords[j]  = v;
+            screen_coords[j] = world2screen(v); // 正交投影，而且只做了个简单的视口变换
         }
         
         // 计算世界坐标中某个三角形的法线（法线 = 三角形任意两条边做叉乘）
-        Vec3f n = (world_coords[2] - world_coords[0]) ^ (world_coords[1] - world_coords[0]);
-        n.normalize(); // 对 n 做归一化处理
+        Vec3f n = cross((world_coords[2] - world_coords[0]), (world_coords[1] - world_coords[0]));
         
-        // 三角形法线和光照方向做点乘，点乘值大于 0，说明法线方向和光照方向在同一侧
-        // 值越大，说明越多的光照射到三角形上，颜色越白
-        float intensity = n * light_dir;
-        if (intensity > 0) {
-            triangle(screen_coords, frame, TGAColor(intensity * 255, intensity * 255, intensity * 255, 255));
-        }
+        float intensity = lightIntensity(n);
+        triangle(screen_coords, zbuffer, frame, TGAColor(intensity * 255, intensity * 255, intensity * 255, 255));
     }
     
     frame.flip_vertically();
-    frame.write_tga_file("output/lesson02_light_model.tga");
+    frame.write_tga_file("output/lesson03_z_buffer.tga");
     
     delete model;
 }
-
-
 
 int main(int argc, char** argv) {
     if (2 == argc) {
@@ -244,10 +199,8 @@ int main(int argc, char** argv) {
     } else {
         model = new Model("obj/african_head.obj");
     }
-//    drawSingleTriangle();
-//    drawModelTriangle();
-    
-    drawYbuffer();
+
+    drawModelTriangle();
 
     return 0;
 }
