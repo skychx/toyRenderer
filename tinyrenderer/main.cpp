@@ -161,13 +161,16 @@ Vec3f world2screen(Vec3f v) {
     return Vec3f(int((v.x + 1.0) * width / 2.0 + 0.5), int((v.y + 1.0) * height / 2.0 + 0.5), v.z);
 }
 
-float lightIntensity(Vec3f n) {
+float lightIntensity(Vec3f *world_coords) {
+    // 假设光是垂直屏幕的
     // 这个是用一个模拟光照对三角形进行着色
-    Vec3f light_dir(0, 0, -1); // 假设光是垂直屏幕的
+    Vec3f light_dir(0, 0, -1);
     
     // 计算世界坐标中某个三角形的法线（法线 = 三角形任意两条边做叉乘）
-    // Vec3f n = (worldCoords[2] - worldCoords[0]) ^ (worldCoords[1] - worldCoords[0]);
-    n.normalize(); // 对 n 做归一化处理
+    Vec3f n = cross((world_coords[2] - world_coords[0]), (world_coords[1] - world_coords[0]));
+    
+    // 对 n 做归一化处理
+    n.normalize();
 
     // 三角形法线和光照方向做点乘，点乘值大于 0，说明法线方向和光照方向在同一侧
     // 值越大，说明越多的光照射到三角形上，颜色越白
@@ -201,17 +204,13 @@ void drawModelTriangle() {
             screen_coords[j] = world2screen(v); // 正交投影，而且只做了个简单的视口变换
         }
         
-        // 计算世界坐标中某个三角形的法线（法线 = 三角形任意两条边做叉乘）
-        Vec3f n = cross((world_coords[2] - world_coords[0]), (world_coords[1] - world_coords[0]));
+        // 计算光照强度
+        float intensity = lightIntensity(world_coords);
         
-        float intensity = lightIntensity(n);
-        
-        // 因为 zbuffer 已经记录深度值了，根据光照角度的不严谨判断就可以去掉了
-        // （加上也无妨，因为可以节省一些分支运算，但是本教程为原理解释，不多考虑性能问题）
-        // if (intensity > 0) {
-        //     triangle(screen_coords, zbuffer, frame, TGAColor(intensity * 255, intensity * 255, intensity * 255, 255));
-        // }
-        triangle(screen_coords, zbuffer, frame, TGAColor(intensity * 255, intensity * 255, intensity * 255, 255));
+        // 着色时同时考虑光照和 zbuffer，渲染效果会好一些
+        if (intensity > 0) {
+            triangle(screen_coords, zbuffer, frame, TGAColor(intensity * 255, intensity * 255, intensity * 255, 255));
+        }
     }
     
     frame.flip_vertically();
