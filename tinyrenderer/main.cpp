@@ -214,7 +214,7 @@ void drawModelTriangle() {
     }
     
     frame.flip_vertically();
-    frame.write_tga_file("output/lesson03_z_buffer.tga");
+    frame.write_tga_file("output/lesson03_diffuse_texture.tga");
     
     delete model;
 }
