@@ -24,30 +24,44 @@ Model::Model(const char *filename) : verts_(), faces_(), norms_(), uv_()  {
         std::istringstream iss(line.c_str());
         char trash;
         if (!line.compare(0, 2, "v ")) {
+            // v -0.000581696 -0.734665 -0.623267
             // 几何顶点
             iss >> trash;
             Vec3f v;
-            for (int i = 0; i < 3; i++) iss >> v[i];
+            for (int i = 0; i < 3; i++) {
+                iss >> v[i];
+            }
             verts_.push_back(v);
         } else if (!line.compare(0, 3, "vn ")) {
+            // vn  0.001 0.482 -0.876
             // 顶点法线
             iss >> trash >> trash;
             Vec3f n;
-            for (int i = 0; i < 3; i++) iss >> n[i];
+            for (int i = 0; i < 3; i++) {
+                iss >> n[i];
+            }
             norms_.push_back(n);
         } else if (!line.compare(0, 3, "vt ")) {
-            // 贴图坐标
+            // vt  0.395 0.584 0.000
+            // 贴图坐标，贴图坐标的范围为第一象限 [0, 1] 内的浮点数
             iss >> trash >> trash;
             Vec2f uv;
-            for (int i = 0; i < 2; i++) iss >> uv[i];
+            for (int i = 0; i < 2; i++) {
+                iss >> uv[i];
+            }
             uv_.push_back(uv);
         } else if (!line.compare(0, 2, "f ")) {
-            // 面
+            // f 24/1/24 25/2/25 26/3/26
+            // 面，先记录了三个三角形顶点，然后使用顶点(v)，纹理(vt)和法线索引(vn)的列表来定义面
             std::vector<Vec3i> f;
             Vec3i tmp;
             iss >> trash;
             while (iss >> tmp[0] >> trash >> tmp[1] >> trash >> tmp[2]) {
-                for (int i = 0; i < 3; i++) tmp[i]--; // in wavefront obj all indices start at 1, not zero
+                for (int i = 0; i < 3; i++) {
+                    // in wavefront obj all indices start at 1, not zero
+                    // 索引从 1 开始
+                    tmp[i]--;
+                }
                 f.push_back(tmp);
             }
             faces_.push_back(f);
@@ -98,6 +112,7 @@ TGAColor Model::diffuse(Vec2i uv) {
     return diffusemap_.get(uv.x, uv.y);
 }
 
+// uv_ 映射到纹理贴图中的真实位置
 Vec2i Model::uv(int iface, int nvert) {
     int idx = faces_[iface][nvert][1];
     return Vec2i(uv_[idx].x * diffusemap_.get_width(), uv_[idx].y * diffusemap_.get_height());
