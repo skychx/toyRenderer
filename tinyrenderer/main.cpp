@@ -107,8 +107,8 @@ Vec3f barycentric(Vec3f A, Vec3f B, Vec3f C, Vec3f P) {
 }
 
 // 自己实现的三角形光栅化函数
-// 主要思路是遍历 Box 中的每一个像素，和三角形的三个点做叉乘，如果叉乘均为正，着色；有一个负数，不着色
-void triangle(Vec3f *pts, float *zbuffer, TGAImage &image, TGAColor color) {
+// 主要思路是利用重心坐标判断点是否在三角形内
+void triangle(Vec3f *pts, Vec2i *uv, float *zbuffer, float intensity, TGAImage &image) {
     // 步骤 1: 找出包围盒
     Vec2f boxmin(image.get_width() - 1, image.get_height() - 1);
     Vec2f boxmax(0, 0);
@@ -118,8 +118,8 @@ void triangle(Vec3f *pts, float *zbuffer, TGAImage &image, TGAColor color) {
         // 第一层循环，遍历 pts
         for (int j = 0; j < 2; j++) {
             // 第二层循环，遍历 Vec2i
-            boxmin.x = std::max(0.f,        std::min(boxmin.x, pts[i].x));
-            boxmin.y = std::max(0.f,        std::min(boxmin.y, pts[i].y));
+            boxmin.x = std::max(0.f, std::min(boxmin.x, pts[i].x));
+            boxmin.y = std::max(0.f, std::min(boxmin.y, pts[i].y));
             
             boxmax.x = std::min(clamp.x, std::max(boxmax.x, pts[i].x));
             boxmax.y = std::min(clamp.y, std::max(boxmax.y, pts[i].y));
@@ -148,10 +148,19 @@ void triangle(Vec3f *pts, float *zbuffer, TGAImage &image, TGAColor color) {
                 P.z += pts[i][2] * bc[i];
             }
             
+            // 计算当前像素的 uv
+            Vec2i uvP;
+            for (int i = 0; i < 3; i++) {
+                uvP.x += uv[i][0] * bc[i];
+                uvP.y += uv[i][1] * bc[i];
+            }
+            
+            
             // 更新总的 zbuffer 并绘制
-            if(zbuffer[int(P.x + P.y * width)] < P.z) {
+            if (zbuffer[int(P.x + P.y * width)] < P.z) {
                 zbuffer[int(P.x + P.y * width)] = P.z;
-                image.set(P.x, P.y, color);
+                TGAColor color = model->diffuse(uvP);
+                image.set(P.x, P.y, TGAColor(intensity * color.r, intensity * color.g, intensity * color.b, 255));
             }
         }
     }
@@ -209,7 +218,13 @@ void drawModelTriangle() {
         
         // 着色时同时考虑光照和 zbuffer，渲染效果会好一些
         if (intensity > 0) {
-            triangle(screen_coords, zbuffer, frame, TGAColor(intensity * 255, intensity * 255, intensity * 255, 255));
+            
+            // 拿出三个顶点的 uv 坐标
+            Vec2i uv[3];
+            for (int k = 0; k < 3; k++) {
+                uv[k] = model->uv(i, k);
+            }
+            triangle(screen_coords, uv, zbuffer, intensity, frame);
         }
     }
     
