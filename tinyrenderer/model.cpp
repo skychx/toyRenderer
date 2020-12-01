@@ -27,7 +27,7 @@ Model::Model(const char *filename) : verts_(), faces_(), norms_(), uv_()  {
             // v -0.000581696 -0.734665 -0.623267
             // 几何顶点
             iss >> trash;
-            Vec3f v;
+            vec3 v;
             for (int i = 0; i < 3; i++) {
                 iss >> v[i];
             }
@@ -36,7 +36,7 @@ Model::Model(const char *filename) : verts_(), faces_(), norms_(), uv_()  {
             // vn  0.001 0.482 -0.876
             // 顶点法线
             iss >> trash >> trash;
-            Vec3f n;
+            vec3 n;
             for (int i = 0; i < 3; i++) {
                 iss >> n[i];
             }
@@ -45,7 +45,7 @@ Model::Model(const char *filename) : verts_(), faces_(), norms_(), uv_()  {
             // vt  0.395 0.584 0.000
             // 贴图坐标，贴图坐标的范围为第一象限 [0, 1] 内的浮点数
             iss >> trash >> trash;
-            Vec2f uv;
+            vec2 uv;
             for (int i = 0; i < 2; i++) {
                 iss >> uv[i];
             }
@@ -53,8 +53,8 @@ Model::Model(const char *filename) : verts_(), faces_(), norms_(), uv_()  {
         } else if (!line.compare(0, 2, "f ")) {
             // f 24/1/24 25/2/25 26/3/26
             // 面，先记录了三个三角形顶点，然后使用顶点(v)，纹理(vt)和法线索引(vn)的列表来定义面
-            std::vector<Vec3i> f;
-            Vec3i tmp;
+            std::vector<vec3> f;
+            vec3 tmp;
             iss >> trash;
             while (iss >> tmp[0] >> trash >> tmp[1] >> trash >> tmp[2]) {
                 for (int i = 0; i < 3; i++) {
@@ -91,7 +91,7 @@ std::vector<int> Model::face(int idx) {
     return face;
 }
 
-Vec3f Model::vert(int i) {
+vec3 Model::vert(int i) {
     return verts_[i];
 }
 
@@ -108,14 +108,14 @@ void Model::load_texture(std::string filename, const char *suffix, TGAImage &img
 }
 
 // 获取某个纹理坐标对应的纹理颜色
-TGAColor Model::diffuse(Vec2i uv) {
+TGAColor Model::diffuse(vec2 uv) {
     return diffusemap_.get(uv.x, uv.y);
 }
 
 // uv_ 映射到纹理贴图中的真实位置
-Vec2i Model::uv(int iface, int nvert) {
+vec2 Model::uv(int iface, int nvert) {
     int idx = faces_[iface][nvert][1];
-    return Vec2i(uv_[idx].x * diffusemap_.get_width(), uv_[idx].y * diffusemap_.get_height());
+    return vec2(uv_[idx].x * diffusemap_.get_width(), uv_[idx].y * diffusemap_.get_height());
 }
 
 

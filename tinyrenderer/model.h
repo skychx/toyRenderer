@@ -14,10 +14,10 @@
 
 class Model {
 private:
-    std::vector<Vec3f> verts_;
-    std::vector<std::vector<Vec3i> > faces_; // attention, this Vec3i means vertex/uv/normal
-    std::vector<Vec3f> norms_; // 法线
-    std::vector<Vec2f> uv_;    // uv 贴图向量
+    std::vector<vec3> verts_;
+    std::vector<std::vector<vec3> > faces_; // attention, this Vec3i means vertex/uv/normal
+    std::vector<vec3> norms_; // 法线
+    std::vector<vec2> uv_;    // uv 贴图向量
     TGAImage diffusemap_;      // 纹理 map
     void load_texture(std::string filename, const char *suffix, TGAImage &img);
 public:
@@ -25,9 +25,9 @@ public:
     ~Model();
     int nverts();
     int nfaces();
-    Vec3f vert(int i);
-    Vec2i uv(int iface, int nvert);
-    TGAColor diffuse(Vec2i uv);
+    vec3 vert(int i);
+    vec2 uv(int iface, int nvert);
+    TGAColor diffuse(vec2 uv);
     std::vector<int> face(int idx);
 };
 
