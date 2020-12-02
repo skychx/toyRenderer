@@ -121,4 +121,25 @@ typedef vec<4> vec4;
 // 三维向量叉乘
 vec3 cross(const vec3 &v1, const vec3 &v2);
 
+/////////////////////////////////////////////////////////////////////////////////
+
+const int DEFAULT_ALLOC=4;
+
+class Matrix {
+    std::vector<std::vector<float> > m;
+    int rows, cols;
+public:
+    Matrix(int r=DEFAULT_ALLOC, int c=DEFAULT_ALLOC);
+    inline int nrows();
+    inline int ncols();
+
+    static Matrix identity(int dimensions);
+    std::vector<float>& operator[](const int i);
+    Matrix operator*(const Matrix& a);
+    Matrix transpose();
+    Matrix inverse();
+
+    friend std::ostream& operator<<(std::ostream& s, Matrix& m);
+};
+
 #endif //__GEOMETRY_H__
