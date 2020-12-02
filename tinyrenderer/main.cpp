@@ -18,6 +18,7 @@ const TGAColor white = TGAColor(255, 255, 255, 255);
 const TGAColor red   = TGAColor(255,   0,   0, 255);
 const TGAColor green = TGAColor(  0, 255,   0, 255);
 const TGAColor blue  = TGAColor(  0,   0, 255, 255);
+const TGAColor yellow = TGAColor(255, 255,  0, 255);
 
 Model *model = NULL;
 const int width  = 800;
@@ -307,10 +308,65 @@ Matrix rotation_z(float cosangle, float sinangle) {
     return R;
 }
 
+void drawGeometry() {
+    model = new Model("obj/cube.obj");
+    const int width  = 200;
+    const int height = 200;
+    
+    TGAImage image(width, height, TGAImage::RGB);
+    Matrix VP = viewport(width/4, width/4, width/2, height/2);
+    
+    // draw the axes
+    {
+        vec3 x(1.f, 0.f, 0.f), y(0.f, 1.f, 0.f), o(0.f, 0.f, 0.f);
+        o = m2v(VP*v2m(o));
+        x = m2v(VP*v2m(x));
+        y = m2v(VP*v2m(y));
+        line(o, x, image, red);
+        line(o, y, image, green);
+    }
+    
+    for (int i = 0; i < model->nfaces(); i++) {
+        std::vector<int> face = model->face(i);
+        for (int j = 0; j < (int)face.size(); j++) {
+            vec3 wp0 = model->vert(face[j]);
+            vec3 wp1 = model->vert(face[(j+1)%face.size()]);
+
+            // draw the original model
+            {
+                vec3 sp0 = m2v(VP*v2m(wp0));
+                vec3 sp1 = m2v(VP*v2m(wp1));
+                line(sp0, sp1, image, white);
+            }
+            
+            // draw the deformed model
+            {
+                Matrix T1 = zoom(1.5);
+                
+                // shear
+                Matrix T2 = Matrix::identity(4);
+                T2[0][1] = 0.333;
+                
+                Matrix T3 = rotation_z(cos(10.*M_PI/180.), sin(10.*M_PI/180.));
+                
+                Matrix T4 = translation(vec3(.33, .5, 0));
+
+                vec3 sp0 = m2v(VP * T3 * T4 * v2m(wp0));
+                vec3 sp1 = m2v(VP * T3 * T4 * v2m(wp1));
+                line(sp0, sp1, image, yellow);
+            }
+        }
+        break;
+    }
+    
+    image.flip_vertically(); // i want to have the origin at the left bottom corner of the image
+    image.write_tga_file("output/lesson04_transforms.tga");
+    delete model;
+}
 
 int main(int argc, char** argv) {
-    drawModelTriangle();
-//    drawGeometry();
+//    drawModelTriangle();
+    drawGeometry();
 
     return 0;
 }
