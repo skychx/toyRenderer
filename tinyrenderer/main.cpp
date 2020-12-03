@@ -21,9 +21,12 @@ const TGAColor blue  = TGAColor(  0,   0, 255, 255);
 const TGAColor yellow = TGAColor(255, 255,  0, 255);
 
 Model *model = NULL;
-const int width  = 800;
-const int height = 800;
+const int WIDTH  = 800;
+const int HEIGHT = 800;
 const int depth  = 255;
+
+vec3 light_dir(0, 0, -1); // 假设光是垂直屏幕的
+vec3 camera(0, 0, 3);
 
 // 思路很简单，点连成线
 void line(vec3 p0, vec3 p1, TGAImage &image, TGAColor color) {
@@ -159,8 +162,8 @@ void triangle(vec3 *pts, vec2 *uv, float *zbuffer, float intensity, TGAImage &im
             
             
             // 更新总的 zbuffer 并绘制
-            if (zbuffer[int(P.x + P.y * width)] < P.z) {
-                zbuffer[int(P.x + P.y * width)] = P.z;
+            if (zbuffer[int(P.x + P.y * WIDTH)] < P.z) {
+                zbuffer[int(P.x + P.y * WIDTH)] = P.z;
                 TGAColor color = model->diffuse(uvP);
                 image.set(P.x, P.y, TGAColor(intensity * color.r, intensity * color.g, intensity * color.b, 255));
             }
@@ -168,74 +171,6 @@ void triangle(vec3 *pts, vec2 *uv, float *zbuffer, float intensity, TGAImage &im
     }
 }
 
-vec3 world2screen(vec3 v) {
-    return vec3(int((v.x + 1.0) * width / 2.0 + 0.5), int((v.y + 1.0) * height / 2.0 + 0.5), v.z);
-}
-
-float lightIntensity(vec3 *world_coords) {
-    // 假设光是垂直屏幕的
-    // 这个是用一个模拟光照对三角形进行着色
-    vec3 light_dir(0, 0, -1);
-    
-    // 计算世界坐标中某个三角形的法线（法线 = 三角形任意两条边做叉乘）
-    vec3 n = cross((world_coords[2] - world_coords[0]), (world_coords[1] - world_coords[0]));
-    
-    // 对 n 做归一化处理
-    n.normalize();
-
-    // 三角形法线和光照方向做点乘，点乘值大于 0，说明法线方向和光照方向在同一侧
-    // 值越大，说明越多的光照射到三角形上，颜色越白
-    return n * light_dir;
-}
-
-void drawModelTriangle() {
-    model = new Model("obj/african_head.obj");
-    TGAImage frame(width, height, TGAImage::RGB);
-    
-    // 初始化 zbuffer
-    // 按道理来说 zbuffer 应该是个二维向量，这里只是用一维表示二维
-    // [[1, 2, 3],       [1, 2, 3,
-    //  [4, 5, 6],   =>   4, 5, 6,
-    //  [7, 8, 9]]        7, 8, 9],
-    float *zbuffer = new float[width * height];
-    for (int i = width * height;
-         i--;
-         zbuffer[i] = -std::numeric_limits<float>::max()
-    );
-    
-    // 遍历所有三角形
-    for (int i = 0; i < model->nfaces(); i++) {
-        std::vector<int> face = model->face(i);
-        vec3 screen_coords[3];
-        vec3 world_coords[3];
-        
-        // 每个三角形的顶点都是一个三维向量
-        for (int j = 0; j < 3; j++) {
-            vec3 v = model->vert(face[j]);
-            world_coords[j]  = v;
-            screen_coords[j] = world2screen(v); // 正交投影，而且只做了个简单的视口变换
-        }
-        
-        // 计算光照强度
-        float intensity = lightIntensity(world_coords);
-        
-        // 着色时同时考虑光照和 zbuffer，渲染效果会好一些
-        if (intensity > 0) {
-            
-            // 拿出三个顶点的 uv 坐标
-            vec2 uv[3];
-            for (int k = 0; k < 3; k++) {
-                uv[k] = model->uv(i, k);
-            }
-            triangle(screen_coords, uv, zbuffer, intensity, frame);
-        }
-    }
-    
-    frame.flip_vertically();
-    frame.write_tga_file("output/lesson03_diffuse_texture.tga");
-    
-    delete model;
-}
 
 // 矩阵 -> 向量
 vec3 m2v(Matrix m) {
@@ -263,6 +198,73 @@ Matrix viewport(int x, int y, int w, int h) {
     m[1][1] = h / 2.f;
     m[2][2] = depth / 2.f;
     return m;
+}
+
+float lightIntensity(vec3 *world_coords) {
+    // 这个是用一个模拟光照对三角形进行着色
+    
+    // 计算世界坐标中某个三角形的法线（法线 = 三角形任意两条边做叉乘）
+    vec3 n = cross((world_coords[2] - world_coords[0]), (world_coords[1] - world_coords[0]));
+    
+    // 对 n 做归一化处理
+    n.normalize();
+
+    // 三角形法线和光照方向做点乘，点乘值大于 0，说明法线方向和光照方向在同一侧
+    // 值越大，说明越多的光照射到三角形上，颜色越白
+    return n * light_dir;
+}
+
+void drawModelTriangle() {
+    model = new Model("obj/african_head.obj");
+    TGAImage frame(WIDTH, HEIGHT, TGAImage::RGB);
+    
+    // 初始化 zbuffer
+    // 按道理来说 zbuffer 应该是个二维向量，这里只是用一维表示二维
+    // [[1, 2, 3],       [1, 2, 3,
+    //  [4, 5, 6],   =>   4, 5, 6,
+    //  [7, 8, 9]]        7, 8, 9],
+    float *zbuffer = new float[WIDTH * HEIGHT];
+    for (int i = WIDTH * HEIGHT;
+         i--;
+         zbuffer[i] = -std::numeric_limits<float>::max()
+    );
+    
+    Matrix Projection = Matrix::identity(4);
+    Matrix ViewPort   = viewport(WIDTH / 8, HEIGHT / 8, WIDTH * 3 / 4, HEIGHT * 3 / 4);
+    Projection[3][2] = -1.f / camera.z;
+    
+    // 遍历所有三角形
+    for (int i = 0; i < model->nfaces(); i++) {
+        std::vector<int> face = model->face(i);
+        vec3 screen_coords[3];
+        vec3 world_coords[3];
+        
+        // 每个三角形的顶点都是一个三维向量
+        for (int j = 0; j < 3; j++) {
+            vec3 v = model->vert(face[j]);
+            world_coords[j]  = v;
+            screen_coords[j] = m2v(ViewPort * Projection * v2m(v)); // 透视投影
+        }
+        
+        // 计算光照强度
+        float intensity = lightIntensity(world_coords);
+        
+        // 着色时同时考虑光照和 zbuffer，渲染效果会好一些
+        if (intensity > 0) {
+            
+            // 拿出三个顶点的 uv 坐标
+            vec2 uv[3];
+            for (int k = 0; k < 3; k++) {
+                uv[k] = model->uv(i, k);
+            }
+            triangle(screen_coords, uv, zbuffer, intensity, frame);
+        }
+    }
+    
+    frame.flip_vertically();
+    frame.write_tga_file("output/lesson04_projection.tga");
+    
+    delete model;
 }
 
 // 平移
@@ -365,8 +367,8 @@ void drawGeometry() {
 }
 
 int main(int argc, char** argv) {
-//    drawModelTriangle();
-    drawGeometry();
+    drawModelTriangle();
+//    drawGeometry();
 
     return 0;
 }
