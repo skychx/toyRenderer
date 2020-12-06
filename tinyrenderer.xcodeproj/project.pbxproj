@@ -11,6 +11,7 @@
 		6C7EA9CE2560CCCB00B9364F /* tgaimage.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 6C7EA9CC2560CCCB00B9364F /* tgaimage.cpp */; };
 		6C7EA9D62560DE6A00B9364F /* model.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 6C7EA9D42560DE6A00B9364F /* model.cpp */; };
 		6CA87FB82573BE6C00BBE4B7 /* geometry.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 6CA87FB72573BE6C00BBE4B7 /* geometry.cpp */; };
+		6CA87FE7257D067A00BBE4B7 /* our_gl.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 6CA87FE5257D067A00BBE4B7 /* our_gl.cpp */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -35,6 +36,8 @@
 		6C7EA9DA2560DF4B00B9364F /* geometry.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = geometry.h; sourceTree = "<group>"; };
 		6C7EA9DB2560DF7000B9364F /* african_head.obj */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = african_head.obj; sourceTree = "<group>"; };
 		6CA87FB72573BE6C00BBE4B7 /* geometry.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = geometry.cpp; sourceTree = "<group>"; };
+		6CA87FE5257D067A00BBE4B7 /* our_gl.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = our_gl.cpp; sourceTree = "<group>"; };
+		6CA87FE6257D067A00BBE4B7 /* our_gl.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = our_gl.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -75,6 +78,8 @@
 				6C7EA9D52560DE6A00B9364F /* model.h */,
 				6C7EA9DA2560DF4B00B9364F /* geometry.h */,
 				6CA87FB72573BE6C00BBE4B7 /* geometry.cpp */,
+				6CA87FE6257D067A00BBE4B7 /* our_gl.h */,
+				6CA87FE5257D067A00BBE4B7 /* our_gl.cpp */,
 			);
 			path = tinyrenderer;
 			sourceTree = "<group>";
@@ -146,6 +151,7 @@
 				6C7EA9CE2560CCCB00B9364F /* tgaimage.cpp in Sources */,
 				6CA87FB82573BE6C00BBE4B7 /* geometry.cpp in Sources */,
 				6C7EA9C52560CC2200B9364F /* main.cpp in Sources */,
+				6CA87FE7257D067A00BBE4B7 /* our_gl.cpp in Sources */,
 				6C7EA9D62560DE6A00B9364F /* model.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

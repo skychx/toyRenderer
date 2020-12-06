@@ -13,6 +13,7 @@
 #include "tgaimage.h"
 #include "model.h"
 #include "geometry.h"
+#include "our_gl.h"
 
 const TGAColor white = TGAColor(255, 255, 255, 255);
 const TGAColor red   = TGAColor(255,   0,   0, 255);
@@ -29,6 +30,11 @@ vec3 light_dir(0, 0, -1); // 假设光是垂直屏幕的
 vec3 camera(0, 0, 3);
 vec3 eye(1, 1, 3);
 vec3 center(0, 0, 0);
+
+
+extern mat<4,4> ModelView;
+extern mat<4,4> Projection;
+extern mat<4,4> Viewport;
 
 // 思路很简单，点连成线
 void line(vec3 p0, vec3 p1, TGAImage &image, TGAColor color) {
@@ -74,26 +80,6 @@ void line(vec3 p0, vec3 p1, TGAImage &image, TGAColor color) {
     }
 }
 
-// 利用叉乘判断是否在三角形内部
-bool isInside(vec3 *pts, vec2 P) {
-    vec2 AB(pts[1].x - pts[0].x, pts[1].y - pts[0].y);
-    vec2 BC(pts[2].x - pts[1].x, pts[2].y - pts[1].y);
-    vec2 CA(pts[0].x - pts[2].x, pts[0].y - pts[2].y);
-
-    vec2 AP(P.x - pts[0].x, P.y - pts[0].y);
-    vec2 BP(P.x - pts[1].x, P.y - pts[1].y);
-    vec2 CP(P.x - pts[2].x, P.y - pts[2].y);
-
-    // 叉乘计算
-    if(
-       (AB.x * AP.y - AP.x * AB.y) >= 0 &&
-       (BC.x * BP.y - BP.x * BC.y) >= 0 &&
-       (CA.x * CP.y - CP.x * CA.y) >= 0
-    ) {
-        return true;
-    }
-    return false;
-}
 
 // 利用重心坐标求解，返回三角形的重心坐标
 vec3 barycentric(vec3 A, vec3 B, vec3 C, vec3 P) {
@@ -175,53 +161,17 @@ void triangle(vec3 *pts, vec2 *uv, float *zbuffer, float intensity, TGAImage &im
 
 
 // 矩阵 -> 向量
-vec3 m2v(Matrix m) {
+vec3 m2v(mat<4,4> m) {
     return vec3(m[0][0]/m[3][0], m[1][0]/m[3][0], m[2][0]/m[3][0]);
 }
 
 // 向量 -> 矩阵
-Matrix v2m(vec3 v) {
-    Matrix m(4, 1);
+mat<4,4> v2m(vec3 v) {
+    mat<4,4> m;
     m[0][0] = v.x;
     m[1][0] = v.y;
     m[2][0] = v.z;
     m[3][0] = 1.f;
-    return m;
-}
-
-// 计算 ModelView 矩阵，实现坐标系的转换
-Matrix lookat(vec3 eye, vec3 center, vec3 up) {
-    // 新的 x'y'z' 坐标系
-    vec3 z = (eye - center).normalize();
-    vec3 x = cross(up, z).normalize();
-    vec3 y = cross(z, x).normalize();
-    
-    // 计算 xyz -> x'y'z' 的转换矩阵
-    Matrix res = Matrix::identity(4);
-    for (int i = 0; i < 3; i++) {
-        res[0][i] = x[i];
-        res[1][i] = y[i];
-        res[2][i] = z[i];
-        res[i][3] = -center[i];
-    }
-    return res;
-}
-
-// 视口变换
-// [-1, 1]*[-1, 1]*[-1, 1] 正方体转换为长方体 [x, x+w]*[y, y+h]*[0, d]
-// [w/2,   0,   0, x+w/2]
-// [  0, h/2,   0, y+h/2]
-// [  0,   0, d/2,   d/2]
-// [  0,   0,   0,     1]
-Matrix viewport(int x, int y, int w, int h) {
-    Matrix m = Matrix::identity(4);
-    m[0][3] = x + w / 2.f;
-    m[1][3] = y + h / 2.f;
-    m[2][3] = depth / 2.f;
-
-    m[0][0] = w / 2.f;
-    m[1][1] = h / 2.f;
-    m[2][2] = depth / 2.f;
     return m;
 }
 
@@ -254,24 +204,12 @@ void drawModelTriangle() {
          zbuffer[i] = -std::numeric_limits<float>::max()
     );
     
-    // ModelView
-    Matrix ModelView  = lookat(eye, center, vec3(0, 1, 0));
-    
-    // 投影矩阵
-    // 注意：乘以投影矩阵并没有进行实际的透视投影变换，它只是计算出合适的分母，投影实际发生在从 4D 到 3D 变换时
-    // 这个投影矩阵，认为 z 轴垂直于屏幕切方向向外； z=0 处为投影平面，z=c 处为摄像机，[0, c] 间为模型
-    // 具体结构可见课程图片：https://raw.githubusercontent.com/ssloy/tinyrenderer/gh-pages/img/04-perspective-projection/525d3930435c3be900e4c7956edb5a1c.png
-    
-    // [1, 0,    0, 0]
-    // [0, 1,    0, 0]
-    // [0, 0,    1, 0]
-    // [0, 0, -1/c, 1]
-    Matrix Projection = Matrix::identity(4);
-    Projection[3][2] = -1.f / (eye - center).norm();
+    lookat(eye, center, vec3(0, 1, 0));       // build the ModelView matrix
+    projection(-1.f / (eye - center).norm()); // build the Projection matrix
 
     // 其实这里用 viewport(0, 0, WIDTH, HEIGHT) 就可以，这样渲染的图像会撑满整个屏幕
     // 乘以 3/4 后再平移 1/8 的距离，就可以把图像摆到图片中央
-    Matrix ViewPort = viewport(WIDTH / 8, HEIGHT / 8, WIDTH * 3/4, HEIGHT * 3/4);
+    viewport(WIDTH / 8, HEIGHT / 8, WIDTH * 3/4, HEIGHT * 3/4); // build the Viewport matrix
     
     // 遍历所有三角形
     for (int i = 0; i < model->nfaces(); i++) {
@@ -283,7 +221,7 @@ void drawModelTriangle() {
         for (int j = 0; j < 3; j++) {
             vec3 v = model->vert(face[j]);
             world_coords[j]  = v;
-            screen_coords[j] = m2v(ViewPort * Projection * ModelView * v2m(v)); // 透视投影
+            screen_coords[j] = m2v(Viewport * Projection * ModelView * v2m(v)); // 透视投影
         }
         
         // 计算光照强度
@@ -302,7 +240,7 @@ void drawModelTriangle() {
     }
     
     frame.flip_vertically();
-    frame.write_tga_file("output/lesson05_ModelView.tga");
+    frame.write_tga_file("output/lesson06.tga");
     
     delete model;
 }
