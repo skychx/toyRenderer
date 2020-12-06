@@ -188,6 +188,11 @@ Matrix v2m(vec3 v) {
 }
 
 // 视口变换
+// [-1, 1]*[-1, 1]*[-1, 1] 正方体转换为长方体 [x, x+w]*[y, y+h]*[0, d]
+// [w/2,   0,   0, x+w/2]
+// [  0, h/2,   0, y+h/2]
+// [  0,   0, d/2,   d/2]
+// [  0,   0,   0,     1]
 Matrix viewport(int x, int y, int w, int h) {
     Matrix m = Matrix::identity(4);
     m[0][3] = x + w / 2.f;
@@ -229,9 +234,21 @@ void drawModelTriangle() {
          zbuffer[i] = -std::numeric_limits<float>::max()
     );
     
+    // 投影矩阵
+    // 注意：乘以投影矩阵并没有进行实际的透视投影变换，它只是计算出合适的分母，投影实际发生在从 4D 到 3D 变换时
+    // 这个投影矩阵，认为 z 轴垂直于屏幕切方向向外； z=0 处为投影平面，z=c 处为摄像机，[0, c] 间为模型
+    // 具体结构可见课程图片：https://raw.githubusercontent.com/ssloy/tinyrenderer/gh-pages/img/04-perspective-projection/525d3930435c3be900e4c7956edb5a1c.png
+    
+    // [1, 0,    0, 0]
+    // [0, 1,    0, 0]
+    // [0, 0,    1, 0]
+    // [0, 0, -1/c, 1]
     Matrix Projection = Matrix::identity(4);
-    Matrix ViewPort   = viewport(WIDTH / 8, HEIGHT / 8, WIDTH * 3 / 4, HEIGHT * 3 / 4);
     Projection[3][2] = -1.f / camera.z;
+
+    // 其实这里用 viewport(0, 0, WIDTH, HEIGHT) 就可以，这样渲染的图像会撑满整个屏幕
+    // 乘以 3/4 后再平移 1/8 的距离，就可以把图像摆到图片中央
+    Matrix ViewPort = viewport(WIDTH / 8, HEIGHT / 8, WIDTH * 3/4, HEIGHT * 3/4);
     
     // 遍历所有三角形
     for (int i = 0; i < model->nfaces(); i++) {
@@ -361,14 +378,11 @@ void drawGeometry() {
         break;
     }
     
-    image.flip_vertically(); // i want to have the origin at the left bottom corner of the image
-    image.write_tga_file("output/lesson04_transforms.tga");
     delete model;
 }
 
 int main(int argc, char** argv) {
     drawModelTriangle();
-//    drawGeometry();
 
     return 0;
 }
