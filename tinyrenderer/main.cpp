@@ -27,6 +27,8 @@ const int depth  = 255;
 
 vec3 light_dir(0, 0, -1); // 假设光是垂直屏幕的
 vec3 camera(0, 0, 3);
+vec3 eye(1, 1, 3);
+vec3 center(0, 0, 0);
 
 // 思路很简单，点连成线
 void line(vec3 p0, vec3 p1, TGAImage &image, TGAColor color) {
@@ -187,6 +189,24 @@ Matrix v2m(vec3 v) {
     return m;
 }
 
+// 计算 ModelView 矩阵，实现坐标系的转换
+Matrix lookat(vec3 eye, vec3 center, vec3 up) {
+    // 新的 x'y'z' 坐标系
+    vec3 z = (eye - center).normalize();
+    vec3 x = cross(up, z).normalize();
+    vec3 y = cross(z, x).normalize();
+    
+    // 计算 xyz -> x'y'z' 的转换矩阵
+    Matrix res = Matrix::identity(4);
+    for (int i = 0; i < 3; i++) {
+        res[0][i] = x[i];
+        res[1][i] = y[i];
+        res[2][i] = z[i];
+        res[i][3] = -center[i];
+    }
+    return res;
+}
+
 // 视口变换
 // [-1, 1]*[-1, 1]*[-1, 1] 正方体转换为长方体 [x, x+w]*[y, y+h]*[0, d]
 // [w/2,   0,   0, x+w/2]
@@ -234,6 +254,9 @@ void drawModelTriangle() {
          zbuffer[i] = -std::numeric_limits<float>::max()
     );
     
+    // ModelView
+    Matrix ModelView  = lookat(eye, center, vec3(0, 1, 0));
+    
     // 投影矩阵
     // 注意：乘以投影矩阵并没有进行实际的透视投影变换，它只是计算出合适的分母，投影实际发生在从 4D 到 3D 变换时
     // 这个投影矩阵，认为 z 轴垂直于屏幕切方向向外； z=0 处为投影平面，z=c 处为摄像机，[0, c] 间为模型
@@ -244,7 +267,7 @@ void drawModelTriangle() {
     // [0, 0,    1, 0]
     // [0, 0, -1/c, 1]
     Matrix Projection = Matrix::identity(4);
-    Projection[3][2] = -1.f / camera.z;
+    Projection[3][2] = -1.f / (eye - center).norm();
 
     // 其实这里用 viewport(0, 0, WIDTH, HEIGHT) 就可以，这样渲染的图像会撑满整个屏幕
     // 乘以 3/4 后再平移 1/8 的距离，就可以把图像摆到图片中央
@@ -260,7 +283,7 @@ void drawModelTriangle() {
         for (int j = 0; j < 3; j++) {
             vec3 v = model->vert(face[j]);
             world_coords[j]  = v;
-            screen_coords[j] = m2v(ViewPort * Projection * v2m(v)); // 透视投影
+            screen_coords[j] = m2v(ViewPort * Projection * ModelView * v2m(v)); // 透视投影
         }
         
         // 计算光照强度
@@ -279,7 +302,7 @@ void drawModelTriangle() {
     }
     
     frame.flip_vertically();
-    frame.write_tga_file("output/lesson04_projection.tga");
+    frame.write_tga_file("output/lesson05_ModelView.tga");
     
     delete model;
 }
