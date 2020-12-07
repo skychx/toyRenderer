@@ -15,18 +15,11 @@
 #include "geometry.h"
 #include "our_gl.h"
 
-const TGAColor white = TGAColor(255, 255, 255, 255);
-const TGAColor red   = TGAColor(255,   0,   0, 255);
-const TGAColor green = TGAColor(  0, 255,   0, 255);
-const TGAColor blue  = TGAColor(  0,   0, 255, 255);
-const TGAColor yellow = TGAColor(255, 255,  0, 255);
-
 Model *model = NULL;
 const int WIDTH  = 800;
 const int HEIGHT = 800;
-const int depth  = 255;
 
-vec3 light_dir(0, 0, -1); // 假设光是垂直屏幕的
+vec3 light_dir = vec3(1, -1, 1).normalize();
 vec3 camera(0, 0, 3);
 vec3 eye(1, 1, 3);
 vec3 center(0, 0, 0);
@@ -101,7 +94,7 @@ vec3 barycentric(vec3 A, vec3 B, vec3 C, vec3 P) {
 
 // 自己实现的三角形光栅化函数
 // 主要思路是利用重心坐标判断点是否在三角形内
-void triangle(vec3 *pts, vec2 *uv, float *zbuffer, float intensity, TGAImage &image) {
+void triangle(vec3 *pts, float *intensity, float *zbuffer,  TGAImage &image) {
     // 步骤 1: 找出包围盒
     vec2 boxmin(image.get_width() - 1, image.get_height() - 1);
     vec2 boxmax(0, 0);
@@ -141,24 +134,21 @@ void triangle(vec3 *pts, vec2 *uv, float *zbuffer, float intensity, TGAImage &im
                 P.z += pts[i][2] * bc[i];
             }
             
-            // 计算当前像素的 uv
-            vec2 uvP;
+
+            float ityP = 0.;
             for (int i = 0; i < 3; i++) {
-                uvP.x += uv[i][0] * bc[i];
-                uvP.y += uv[i][1] * bc[i];
+                ityP += intensity[i] * bc[i];
             }
             
             
             // 更新总的 zbuffer 并绘制
             if (zbuffer[int(P.x + P.y * WIDTH)] < P.z) {
                 zbuffer[int(P.x + P.y * WIDTH)] = P.z;
-                TGAColor color = model->diffuse(uvP);
-                image.set(P.x, P.y, TGAColor(intensity * color.r, intensity * color.g, intensity * color.b, 255));
+                image.set(P.x, P.y, TGAColor(255, 255, 255) * ityP);
             }
         }
     }
 }
-
 
 // 矩阵 -> 向量
 vec3 m2v(mat<4,4> m) {
@@ -173,20 +163,6 @@ mat<4,4> v2m(vec3 v) {
     m[2][0] = v.z;
     m[3][0] = 1.f;
     return m;
-}
-
-float lightIntensity(vec3 *world_coords) {
-    // 这个是用一个模拟光照对三角形进行着色
-    
-    // 计算世界坐标中某个三角形的法线（法线 = 三角形任意两条边做叉乘）
-    vec3 n = cross((world_coords[2] - world_coords[0]), (world_coords[1] - world_coords[0]));
-    
-    // 对 n 做归一化处理
-    n.normalize();
-
-    // 三角形法线和光照方向做点乘，点乘值大于 0，说明法线方向和光照方向在同一侧
-    // 值越大，说明越多的光照射到三角形上，颜色越白
-    return n * light_dir;
 }
 
 void drawModelTriangle() {
@@ -216,31 +192,22 @@ void drawModelTriangle() {
         std::vector<int> face = model->face(i);
         vec3 screen_coords[3];
         vec3 world_coords[3];
+        float intensity[3];
         
         // 每个三角形的顶点都是一个三维向量
         for (int j = 0; j < 3; j++) {
             vec3 v = model->vert(face[j]);
             world_coords[j]  = v;
             screen_coords[j] = m2v(Viewport * Projection * ModelView * v2m(v)); // 透视投影
+            intensity[j] = model->norm(i, j) * light_dir;
         }
-        
-        // 计算光照强度
-        float intensity = lightIntensity(world_coords);
         
         // 着色时同时考虑光照和 zbuffer，渲染效果会好一些
-        if (intensity > 0) {
-            
-            // 拿出三个顶点的 uv 坐标
-            vec2 uv[3];
-            for (int k = 0; k < 3; k++) {
-                uv[k] = model->uv(i, k);
-            }
-            triangle(screen_coords, uv, zbuffer, intensity, frame);
-        }
+        triangle(screen_coords, intensity, zbuffer, frame);
     }
     
     frame.flip_vertically();
-    frame.write_tga_file("output/lesson06.tga");
+    frame.write_tga_file("output/lesson05_gouraud_shading.tga");
     
     delete model;
 }

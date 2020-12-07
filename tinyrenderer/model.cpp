@@ -118,4 +118,8 @@ vec2 Model::uv(int iface, int nvert) {
     return vec2(uv_[idx].x * diffusemap_.get_width(), uv_[idx].y * diffusemap_.get_height());
 }
 
+vec3 Model::norm(int iface, int nvert) {
+    int idx = faces_[iface][nvert][2];
+    return norms_[idx].normalize();
+}
 

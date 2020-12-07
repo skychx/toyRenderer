@@ -60,41 +60,41 @@ void viewport(const int x, const int y, const int w, const int h) {
     }};
 }
 
-// 利用叉乘判断是否在三角形内部
-bool isInside(vec3 *pts, vec2 P) {
-    vec2 AB(pts[1].x - pts[0].x, pts[1].y - pts[0].y);
-    vec2 BC(pts[2].x - pts[1].x, pts[2].y - pts[1].y);
-    vec2 CA(pts[0].x - pts[2].x, pts[0].y - pts[2].y);
-
-    vec2 AP(P.x - pts[0].x, P.y - pts[0].y);
-    vec2 BP(P.x - pts[1].x, P.y - pts[1].y);
-    vec2 CP(P.x - pts[2].x, P.y - pts[2].y);
-
-    // 叉乘计算
-    if(
-       (AB.x * AP.y - AP.x * AB.y) >= 0 &&
-       (BC.x * BP.y - BP.x * BC.y) >= 0 &&
-       (CA.x * CP.y - CP.x * CA.y) >= 0
-    ) {
-        return true;
-    }
-    return false;
-}
-
-// 利用重心坐标求解，返回三角形的重心坐标
-vec3 barycentric(vec3 A, vec3 B, vec3 C, vec3 P) {
-    
-    vec3 x(C[0] - A[0], B[0] - A[0], A[0] - P[0]); // AB AC PA 在 x 上的分量
-    vec3 y(C[1] - A[1], B[1] - A[1], A[1] - P[1]); // AB AC PA 在 y 上的分量
-
-    vec3 u = cross(x, y); // u 向量和 x y 点乘都为 0，所以 u 垂直于 xy 平面
-    
-    // dont forget that u[2] is integer. If it is zero then triangle ABC is degenerate
-    // 根据 u[2] 判断法线是向内的还是向外的，向内的抛弃，向外的保留并归一化
-    if (std::abs(u[2]) > 1e-2) {
-        return vec3(1.f - (u.x + u.y) / u.z, u.y / u.z, u.x / u.z);
-    }
-    
-    // in this case generate negative coordinates, it will be thrown away by the rasterizator
-    return vec3(-1, 1, 1);
-}
+//// 利用叉乘判断是否在三角形内部
+//bool isInside(vec3 *pts, vec2 P) {
+//    vec2 AB(pts[1].x - pts[0].x, pts[1].y - pts[0].y);
+//    vec2 BC(pts[2].x - pts[1].x, pts[2].y - pts[1].y);
+//    vec2 CA(pts[0].x - pts[2].x, pts[0].y - pts[2].y);
+//
+//    vec2 AP(P.x - pts[0].x, P.y - pts[0].y);
+//    vec2 BP(P.x - pts[1].x, P.y - pts[1].y);
+//    vec2 CP(P.x - pts[2].x, P.y - pts[2].y);
+//
+//    // 叉乘计算
+//    if(
+//       (AB.x * AP.y - AP.x * AB.y) >= 0 &&
+//       (BC.x * BP.y - BP.x * BC.y) >= 0 &&
+//       (CA.x * CP.y - CP.x * CA.y) >= 0
+//    ) {
+//        return true;
+//    }
+//    return false;
+//}
+//
+//// 利用重心坐标求解，返回三角形的重心坐标
+//vec3 barycentric(vec3 A, vec3 B, vec3 C, vec3 P) {
+//    
+//    vec3 x(C[0] - A[0], B[0] - A[0], A[0] - P[0]); // AB AC PA 在 x 上的分量
+//    vec3 y(C[1] - A[1], B[1] - A[1], A[1] - P[1]); // AB AC PA 在 y 上的分量
+//
+//    vec3 u = cross(x, y); // u 向量和 x y 点乘都为 0，所以 u 垂直于 xy 平面
+//    
+//    // dont forget that u[2] is integer. If it is zero then triangle ABC is degenerate
+//    // 根据 u[2] 判断法线是向内的还是向外的，向内的抛弃，向外的保留并归一化
+//    if (std::abs(u[2]) > 1e-2) {
+//        return vec3(1.f - (u.x + u.y) / u.z, u.y / u.z, u.x / u.z);
+//    }
+//    
+//    // in this case generate negative coordinates, it will be thrown away by the rasterizator
+//    return vec3(-1, 1, 1);
+//}
