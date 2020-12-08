@@ -11,6 +11,8 @@ mat<4,4> ModelView;
 mat<4,4> Projection;
 mat<4,4> Viewport;
 
+IShader::~IShader() {}
+
 // 计算 ModelView 矩阵，实现坐标系的转换
 void lookat(const vec3 eye, const vec3 center, const vec3 up) {
     // 新的 x'y'z' 坐标系
@@ -53,48 +55,69 @@ void projection(const double coeff) {
 // [-1, 1]*[-1, 1]*[-1, 1] 正方体转换为长方体 [x, x+w]*[y, y+h]*[-1, 1]
 void viewport(const int x, const int y, const int w, const int h) {
     Viewport = {{
-        {w/2.,    0,  0, x + w/2.},
-        {   0, h/2.,  0, y + h/2.},
-        {   0,    0,  1,        0},
-        {   0,    0,  0,        1}
+        {w/2.,    0,         0,  x + w/2.},
+        {   0, h/2.,         0,  y + h/2.},
+        {   0,    0, 255.f/2.f, 255.f/2.f},
+        {   0,    0,         0,         1}
     }};
 }
 
-//// 利用叉乘判断是否在三角形内部
-//bool isInside(vec3 *pts, vec2 P) {
-//    vec2 AB(pts[1].x - pts[0].x, pts[1].y - pts[0].y);
-//    vec2 BC(pts[2].x - pts[1].x, pts[2].y - pts[1].y);
-//    vec2 CA(pts[0].x - pts[2].x, pts[0].y - pts[2].y);
-//
-//    vec2 AP(P.x - pts[0].x, P.y - pts[0].y);
-//    vec2 BP(P.x - pts[1].x, P.y - pts[1].y);
-//    vec2 CP(P.x - pts[2].x, P.y - pts[2].y);
-//
-//    // 叉乘计算
-//    if(
-//       (AB.x * AP.y - AP.x * AB.y) >= 0 &&
-//       (BC.x * BP.y - BP.x * BC.y) >= 0 &&
-//       (CA.x * CP.y - CP.x * CA.y) >= 0
-//    ) {
-//        return true;
-//    }
-//    return false;
-//}
-//
-//// 利用重心坐标求解，返回三角形的重心坐标
-//vec3 barycentric(vec3 A, vec3 B, vec3 C, vec3 P) {
-//    
-//    vec3 x(C[0] - A[0], B[0] - A[0], A[0] - P[0]); // AB AC PA 在 x 上的分量
-//    vec3 y(C[1] - A[1], B[1] - A[1], A[1] - P[1]); // AB AC PA 在 y 上的分量
-//
-//    vec3 u = cross(x, y); // u 向量和 x y 点乘都为 0，所以 u 垂直于 xy 平面
-//    
-//    // dont forget that u[2] is integer. If it is zero then triangle ABC is degenerate
-//    // 根据 u[2] 判断法线是向内的还是向外的，向内的抛弃，向外的保留并归一化
-//    if (std::abs(u[2]) > 1e-2) {
-//        return vec3(1.f - (u.x + u.y) / u.z, u.y / u.z, u.x / u.z);
-//    }
-//    
-//    // in this case generate negative coordinates, it will be thrown away by the rasterizator
-//    return vec3(-1, 1, 1);
-//}
+
+// 利用重心坐标求解，返回三角形的重心坐标
+vec3 barycentric(vec2 A, vec2 B, vec2 C, vec2 P) {
+
+    vec3 x(C[0] - A[0], B[0] - A[0], A[0] - P[0]); // AB AC PA 在 x 上的分量
+    vec3 y(C[1] - A[1], B[1] - A[1], A[1] - P[1]); // AB AC PA 在 y 上的分量
+
+    vec3 u = cross(x, y); // u 向量和 x y 点乘都为 0，所以 u 垂直于 xy 平面
+
+    // dont forget that u[2] is integer. If it is zero then triangle ABC is degenerate
+    // 根据 u[2] 判断法线是向内的还是向外的，向内的抛弃，向外的保留并归一化
+    if (std::abs(u[2]) > 1e-2) {
+        return vec3(1.f - (u.x + u.y) / u.z, u.y / u.z, u.x / u.z);
+    }
+
+    // in this case generate negative coordinates, it will be thrown away by the rasterizator
+    return vec3(-1, 1, 1);
+}
+
+// 自己实现的三角形光栅化函数
+// 主要思路是利用重心坐标判断点是否在三角形内
+void triangle(vec4 *pts, IShader &shader, TGAImage &image, TGAImage &zbuffer) {
+    // 步骤 1: 找出包围盒
+    vec2 boxmin( std::numeric_limits<float>::max(),  std::numeric_limits<float>::max());
+    vec2 boxmax(-std::numeric_limits<float>::max(), -std::numeric_limits<float>::max());
+    // 查找包围盒边界
+    for (int i = 0; i < 3; i++) {
+        // 第一层循环，遍历 pts
+        for (int j = 0; j < 2; j++) {
+            // 第二层循环，遍历 Vec2i
+            boxmin[j] = std::min(boxmin[j], pts[i][j] / pts[i][3]);
+            boxmax[j] = std::max(boxmax[j], pts[i][j] / pts[i][3]);
+        }
+    }
+
+    // 步骤二：对包围盒里的每一个像素进行遍历
+    vec2 P;
+    TGAColor color;
+    for (P.x = boxmin.x; P.x <= boxmax.x; P.x++) {
+        for (P.y = boxmin.y; P.y <= boxmax.y; P.y++) {
+            vec3 c = barycentric(proj<2>(pts[0] / pts[0][3]), proj<2>(pts[1] / pts[1][3]), proj<2>(pts[2] / pts[2][3]), proj<2>(P));
+            float z = pts[0][2] * c.x + pts[1][2] * c.y + pts[2][2] * c.z;
+            float w = pts[0][3] * c.x + pts[1][3] * c.y + pts[2][3] * c.z;
+            int frag_depth = std::max(0, std::min(255, int(z/w + .5)));
+            
+            // 重心坐标某一项小于 0，说明在三角形外，跳过不绘制
+            if (c.x < 0 || c.y < 0 || c.z < 0 ||
+                zbuffer.get(P.x, P.y)[0] > frag_depth) {
+                continue;
+            }
+            
+            bool discard = shader.fragment(c, color);
+            if (!discard) {
+                zbuffer.set(P.x, P.y, TGAColor(frag_depth));
+                image.set(P.x, P.y, color);
+            }
+        }
+    }
+}

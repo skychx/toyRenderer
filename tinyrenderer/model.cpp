@@ -82,6 +82,20 @@ int Model::nfaces() {
     return (int)faces_.size();
 }
 
+vec3 Model::normal(vec2 uvf) {
+    vec2 uv(uvf[0] * normalmap_.get_width(), uvf[1] * normalmap_.get_height());
+    TGAColor c = normalmap_.get(uv[0], uv[1]);
+    vec3 res;
+    for (int i=0; i<3; i++)
+        res[2-i] = (float)c[i]/255.f*2.f - 1.f;
+    return res;
+}
+
+vec3 Model::normal(int iface, int nthvert) {
+    int idx = faces_[iface][nthvert][2];
+    return norms_[idx].normalize();
+}
+
 std::vector<int> Model::face(int idx) {
     std::vector<int> face;
     for (int i = 0; i < (int)faces_[idx].size(); i++) {
@@ -93,6 +107,10 @@ std::vector<int> Model::face(int idx) {
 
 vec3 Model::vert(int i) {
     return verts_[i];
+}
+
+vec3 Model::vert(int iface, int nthvert) {
+    return verts_[faces_[iface][nthvert][0]];
 }
 
 // 加载纹理贴图
