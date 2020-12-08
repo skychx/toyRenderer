@@ -11,7 +11,6 @@ mat<4,4> ModelView;
 mat<4,4> Projection;
 mat<4,4> Viewport;
 
-IShader::~IShader() {}
 
 // 计算 ModelView 矩阵，实现坐标系的转换
 void lookat(const vec3 eye, const vec3 center, const vec3 up) {
@@ -100,8 +99,8 @@ void triangle(vec4 *pts, IShader &shader, TGAImage &image, TGAImage &zbuffer) {
     // 步骤二：对包围盒里的每一个像素进行遍历
     vec2 P;
     TGAColor color;
-    for (P.x = boxmin.x; P.x <= boxmax.x; P.x++) {
-        for (P.y = boxmin.y; P.y <= boxmax.y; P.y++) {
+    for (P.x = (int)boxmin.x; P.x <= (int)boxmax.x; P.x++) {
+        for (P.y = (int)boxmin.y; P.y <= (int)boxmax.y; P.y++) {
             vec3 c = barycentric(proj<2>(pts[0] / pts[0][3]), proj<2>(pts[1] / pts[1][3]), proj<2>(pts[2] / pts[2][3]), proj<2>(P));
             float z = pts[0][2] * c.x + pts[1][2] * c.y + pts[2][2] * c.z;
             float w = pts[0][3] * c.x + pts[1][3] * c.y + pts[2][3] * c.z;

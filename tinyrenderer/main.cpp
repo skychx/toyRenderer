@@ -23,6 +23,7 @@ vec3 light_dir(1, 1, 1);
 vec3 camera(0, 0, 3);
 vec3 eye(1, 1, 3);
 vec3 center(0, 0, 0);
+vec3 up(0, 1, 0);
 
 
 extern mat<4,4> ModelView;
@@ -98,9 +99,11 @@ struct GouraudShader : public IShader {
 void drawModelTriangle() {
     model = new Model("obj/african_head.obj");
 
-    
-    lookat(eye, center, vec3(0, 1, 0));       // build the ModelView matrix
-    projection(-1.f / (eye - center).norm()); // build the Projection matrix
+    // build the ModelView matrix
+    lookat(eye, center, up);
+
+    // build the Projection matrix
+    projection(-1.f / (eye - center).norm());
 
     // 其实这里用 viewport(0, 0, WIDTH, HEIGHT) 就可以，这样渲染的图像会撑满整个屏幕
     // 乘以 3/4 后再平移 1/8 的距离，就可以把图像摆到图片中央
