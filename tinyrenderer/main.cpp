@@ -89,9 +89,19 @@ struct GouraudShader : public IShader {
     }
 
     virtual bool fragment(vec3 bar, TGAColor &color) {
-        float intensity = varying_intensity * bar;   // interpolate intensity for the current pixel
-        color = TGAColor(255, 255, 255) * intensity; // well duh
-        return false;                              // no, we do not discard this pixel
+//        float intensity = varying_intensity * bar;   // interpolate intensity for the current pixel
+//        color = TGAColor(255, 255, 255) * intensity; // well duh
+//        return false;                              // no, we do not discard this pixel
+
+        float intensity = varying_intensity * bar;
+        if (intensity > .85) intensity = 1;
+        else if (intensity > .60) intensity = .80;
+        else if (intensity > .45) intensity = .60;
+        else if (intensity > .30) intensity = .45;
+        else if (intensity > .15) intensity = .30;
+        else intensity = 0;
+        color = TGAColor(255, 155, 0) * intensity;
+        return false;
     }
 };
 
@@ -126,8 +136,8 @@ void drawModelTriangle() {
     
     frame.flip_vertically();
     zbuffer.flip_vertically();
-    frame.write_tga_file("output/lesson06_gouraud_shading.tga");
-    zbuffer.write_tga_file("output/lesson06_zbuffer.tga");
+    frame.write_tga_file("output/lesson06_first_modification.tga");
+//    zbuffer.write_tga_file("output/lesson06_zbuffer.tga");
     
     delete model;
 }
