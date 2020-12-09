@@ -74,14 +74,17 @@ Model::Model(const char *filename) : verts_(), faces_(), norms_(), uv_()  {
 Model::~Model() {
 }
 
+// 计算顶点数
 int Model::nverts() {
     return (int)verts_.size();
 }
 
+// 计算三角形面数
 int Model::nfaces() {
     return (int)faces_.size();
 }
 
+// 通过法线贴图获取某个纹理坐标的法线
 vec3 Model::normal(vec2 uvf) {
     vec2 uv(uvf[0] * normalmap_.get_width(), uvf[1] * normalmap_.get_height());
     TGAColor c = normalmap_.get(uv[0], uv[1]);
@@ -91,11 +94,13 @@ vec3 Model::normal(vec2 uvf) {
     return res;
 }
 
-vec3 Model::normal(int iface, int nthvert) {
-    int idx = faces_[iface][nthvert][2];
+// 获取某个三角形面的某个顶点的法线
+vec3 Model::normal(int iface, int nvert) {
+    int idx = faces_[iface][nvert][2];
     return norms_[idx].normalize();
 }
 
+// 获取某个三角形的三个顶点
 std::vector<int> Model::face(int idx) {
     std::vector<int> face;
     for (int i = 0; i < (int)faces_[idx].size(); i++) {
@@ -105,12 +110,14 @@ std::vector<int> Model::face(int idx) {
     return face;
 }
 
+// 获取某个顶点
 vec3 Model::vert(int i) {
     return verts_[i];
 }
 
-vec3 Model::vert(int iface, int nthvert) {
-    return verts_[faces_[iface][nthvert][0]];
+// 获取某个三角形面的某个顶点
+vec3 Model::vert(int iface, int nvert) {
+    return verts_[faces_[iface][nvert][0]];
 }
 
 // 加载纹理贴图
@@ -136,6 +143,7 @@ vec2 Model::uv(int iface, int nvert) {
     return vec2(uv_[idx].x * diffusemap_.get_width(), uv_[idx].y * diffusemap_.get_height());
 }
 
+// 获取某个三角形面的某个顶点的法线
 vec3 Model::norm(int iface, int nvert) {
     int idx = faces_[iface][nvert][2];
     return norms_[idx].normalize();

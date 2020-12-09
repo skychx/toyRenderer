@@ -99,9 +99,13 @@ void triangle(vec4 *pts, IShader &shader, TGAImage &image, TGAImage &zbuffer) {
     // 步骤二：对包围盒里的每一个像素进行遍历
     vec2 P;
     TGAColor color;
+    // 这里注意要强制指定 int 类型，不然 P 坐标转为浮点数时绘制会出现边界着色失败的现象
     for (P.x = (int)boxmin.x; P.x <= (int)boxmax.x; P.x++) {
         for (P.y = (int)boxmin.y; P.y <= (int)boxmax.y; P.y++) {
+            // c 是根据三个顶点坐标计算出的重心坐标
             vec3 c = barycentric(proj<2>(pts[0] / pts[0][3]), proj<2>(pts[1] / pts[1][3]), proj<2>(pts[2] / pts[2][3]), proj<2>(P));
+            
+            // TODO: 这里感觉是在做 zbuffer 记录，没太看懂明天看吧
             float z = pts[0][2] * c.x + pts[1][2] * c.y + pts[2][2] * c.z;
             float w = pts[0][3] * c.x + pts[1][3] * c.y + pts[2][3] * c.z;
             int frag_depth = std::max(0, std::min(255, int(z/w + .5)));

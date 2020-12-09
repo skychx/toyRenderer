@@ -76,26 +76,30 @@ void line(vec3 p0, vec3 p1, TGAImage &image, TGAColor color) {
 
 
 struct GouraudShader : public IShader {
-    vec3 varying_intensity; // written by vertex shader, read by fragment shader
+    // written by vertex shader, read by fragment shader
+    vec3 varying_intensity;
     mat<2,3> varying_uv;
 
     virtual vec4 vertex(int iface, int nthvert) {
-        // read the vertex from .obj file
+        // 从 .obj 文件读取三角形顶点数据
         vec4 gl_Vertex = embed<4>(model->vert(iface, nthvert));
-        // transform it to screen coordinates
+        // MVP & Viewport 变换
         gl_Vertex = Viewport * Projection * ModelView * gl_Vertex;
-        // get diffuse lighting intensity
+        // 获取顶点的光照数据
         varying_intensity[nthvert] = std::max<float>(0.f, model->normal(iface, nthvert) * light_dir);
-        //
+        // 获取顶点的贴图位置信息
         varying_uv.set_col(nthvert, model->uv(iface, nthvert));
         return gl_Vertex;
     }
 
     virtual bool fragment(vec3 bar, TGAColor &color) {
-        float intensity = varying_intensity * bar;   // interpolate intensity for the current pixel
+        // 因为要做插值，所以光照和贴图都要乘以重心坐标（bar 是重心坐标）
+        float intensity = varying_intensity * bar;
         vec2 uv = varying_uv * bar;
-        color = model->diffuse(uv) * intensity;  // well duh
-        return false;                              // no, we do not discard this pixel
+        // 像素着色（考虑贴图和光照因素）
+        color = model->diffuse(uv) * intensity;
+        // no, we do not discard this pixel
+        return false;
     }
 };
 
