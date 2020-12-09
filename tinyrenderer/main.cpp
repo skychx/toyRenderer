@@ -77,6 +77,7 @@ void line(vec3 p0, vec3 p1, TGAImage &image, TGAColor color) {
 
 struct GouraudShader : public IShader {
     vec3 varying_intensity; // written by vertex shader, read by fragment shader
+    mat<2,3> varying_uv;
 
     virtual vec4 vertex(int iface, int nthvert) {
         // read the vertex from .obj file
@@ -85,23 +86,16 @@ struct GouraudShader : public IShader {
         gl_Vertex = Viewport * Projection * ModelView * gl_Vertex;
         // get diffuse lighting intensity
         varying_intensity[nthvert] = std::max<float>(0.f, model->normal(iface, nthvert) * light_dir);
+        //
+        varying_uv.set_col(nthvert, model->uv(iface, nthvert));
         return gl_Vertex;
     }
 
     virtual bool fragment(vec3 bar, TGAColor &color) {
-//        float intensity = varying_intensity * bar;   // interpolate intensity for the current pixel
-//        color = TGAColor(255, 255, 255) * intensity; // well duh
-//        return false;                              // no, we do not discard this pixel
-
-        float intensity = varying_intensity * bar;
-        if (intensity > .85) intensity = 1;
-        else if (intensity > .60) intensity = .80;
-        else if (intensity > .45) intensity = .60;
-        else if (intensity > .30) intensity = .45;
-        else if (intensity > .15) intensity = .30;
-        else intensity = 0;
-        color = TGAColor(255, 155, 0) * intensity;
-        return false;
+        float intensity = varying_intensity * bar;   // interpolate intensity for the current pixel
+        vec2 uv = varying_uv * bar;
+        color = model->diffuse(uv) * intensity;  // well duh
+        return false;                              // no, we do not discard this pixel
     }
 };
 
@@ -136,7 +130,7 @@ void drawModelTriangle() {
     
     frame.flip_vertically();
     zbuffer.flip_vertically();
-    frame.write_tga_file("output/lesson06_first_modification.tga");
+    frame.write_tga_file("output/lesson06_textures.tga");
 //    zbuffer.write_tga_file("output/lesson06_zbuffer.tga");
     
     delete model;
