@@ -19,7 +19,7 @@ private:
     std::vector<vec3> norms_; // 法线
     std::vector<vec2> uv_;    // uv 贴图向量
     TGAImage diffusemap_;      // 纹理 map
-    TGAImage normalmap_;
+    TGAImage normalmap_;       // 法线贴图
     TGAImage specularmap_;
     void load_texture(std::string filename, const char *suffix, TGAImage &img);
 public:

@@ -77,16 +77,15 @@ void line(vec3 p0, vec3 p1, TGAImage &image, TGAColor color) {
 
 struct GouraudShader : public IShader {
     // written by vertex shader, read by fragment shader
-    vec3 varying_intensity;
     mat<2,3> varying_uv;
+    mat<4,4> uniform_M;   //  Projection * ModelView
+    mat<4,4> uniform_MIT; // (Projection * ModelView).invert_transpose()
 
     virtual vec4 vertex(int iface, int nthvert) {
         // 从 .obj 文件读取三角形顶点数据
         vec4 gl_Vertex = embed<4>(model->vert(iface, nthvert));
         // MVP & Viewport 变换
         gl_Vertex = Viewport * Projection * ModelView * gl_Vertex;
-        // 获取顶点的光照数据
-        varying_intensity[nthvert] = std::max<float>(0.f, model->normal(iface, nthvert) * light_dir);
         // 获取顶点的贴图位置信息
         varying_uv.set_col(nthvert, model->uv(iface, nthvert));
         return gl_Vertex;
@@ -94,9 +93,15 @@ struct GouraudShader : public IShader {
 
     virtual bool fragment(vec3 bar, TGAColor &color) {
         // 因为要做插值，所以光照和贴图都要乘以重心坐标（bar 是重心坐标）
-        float intensity = varying_intensity * bar;
         vec2 uv = varying_uv * bar;
-        // 像素着色（考虑贴图和光照因素）
+        
+        // 读取法线贴图中的法线信息
+        vec3 n = proj<3>(uniform_MIT * embed<4>(model->normal(uv))).normalize();
+        vec3 l = proj<3>(uniform_M * embed<4>(light_dir)).normalize();
+   
+        float intensity = std::max<float>(0.f, n * l);
+        
+        // 像素着色（考虑纹理贴图、法线贴图、光照）
         color = model->diffuse(uv) * intensity;
         // no, we do not discard this pixel
         return false;
@@ -123,6 +128,8 @@ void drawModelTriangle() {
     
     // 遍历所有三角形
     GouraudShader shader;
+    shader.uniform_M   =  Projection * ModelView;
+    shader.uniform_MIT = (Projection * ModelView).invert_transpose();
     for (int i = 0; i < model->nfaces(); i++) {
         vec4 screen_coords[3];
         for (int j = 0; j < 3; j++) {
@@ -134,7 +141,7 @@ void drawModelTriangle() {
     
     frame.flip_vertically();
     zbuffer.flip_vertically();
-    frame.write_tga_file("output/lesson06_textures.tga");
+    frame.write_tga_file("output/lesson06_normalmapping.tga");
 //    zbuffer.write_tga_file("output/lesson06_zbuffer.tga");
     
     delete model;

@@ -12,7 +12,7 @@
 #include <vector>
 #include "model.h"
 
-Model::Model(const char *filename) : verts_(), faces_(), norms_(), uv_()  {
+Model::Model(const char *filename) : verts_(), faces_(), norms_(), uv_(), diffusemap_(), normalmap_()  {
     std::ifstream in;
     in.open (filename, std::ifstream::in);
     if (in.fail()) return;
@@ -69,6 +69,7 @@ Model::Model(const char *filename) : verts_(), faces_(), norms_(), uv_()  {
     }
     std::cerr << "# v# " << verts_.size() << " f# "  << faces_.size() << " vt# " << uv_.size() << " vn# " << norms_.size() << std::endl;
     load_texture(filename, "_diffuse.tga", diffusemap_);
+    load_texture(filename, "_nm.tga", normalmap_);
 }
 
 Model::~Model() {
@@ -86,8 +87,7 @@ int Model::nfaces() {
 
 // 通过法线贴图获取某个纹理坐标的法线
 vec3 Model::normal(vec2 uvf) {
-    vec2 uv(uvf[0] * normalmap_.get_width(), uvf[1] * normalmap_.get_height());
-    TGAColor c = normalmap_.get(uv[0], uv[1]);
+    TGAColor c = normalmap_.get(uvf.x, uvf.y);
     vec3 res;
     for (int i=0; i<3; i++)
         res[2-i] = (float)c[i]/255.f*2.f - 1.f;
