@@ -98,11 +98,25 @@ struct GouraudShader : public IShader {
         // 读取法线贴图中的法线信息
         vec3 n = proj<3>(uniform_MIT * embed<4>(model->normal(uv))).normalize();
         vec3 l = proj<3>(uniform_M * embed<4>(light_dir)).normalize();
-   
-        float intensity = std::max<float>(0.f, n * l);
+        vec3 r = (n * (n * l * 2.f) - l).normalize(); // reflected light
         
-        // 像素着色（考虑纹理贴图、法线贴图、光照）
-        color = model->diffuse(uv) * intensity;
+        // 镜面高亮
+        float spec = pow(std::max<float>(r.z, 0.0f), model->specular(uv));
+        // 漫反射
+        float diff = std::max<float>(0.f, n * l);
+        // 固有纹理
+        TGAColor c = model->diffuse(uv);
+        
+        color = c;
+        
+        // Phong reflection model
+        for (int i = 0; i < 3; i++) {
+            //   5: ambient component
+            //   1: diffuse component
+            // 0.6: specular component
+            color[i] = std::min<float>(5 + c[i] * (diff + .6 * spec), 255);
+        }
+        
         // no, we do not discard this pixel
         return false;
     }
@@ -141,7 +155,7 @@ void drawModelTriangle() {
     
     frame.flip_vertically();
     zbuffer.flip_vertically();
-    frame.write_tga_file("output/lesson06_normalmapping.tga");
+    frame.write_tga_file("output/lesson06_specular_mapping.tga");
 //    zbuffer.write_tga_file("output/lesson06_zbuffer.tga");
     
     delete model;

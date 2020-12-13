@@ -38,6 +38,10 @@
 		6CA87FB72573BE6C00BBE4B7 /* geometry.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = geometry.cpp; sourceTree = "<group>"; };
 		6CA87FE5257D067A00BBE4B7 /* our_gl.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = our_gl.cpp; sourceTree = "<group>"; };
 		6CA87FE6257D067A00BBE4B7 /* our_gl.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = our_gl.h; sourceTree = "<group>"; };
+		6CA87FED258633CD00BBE4B7 /* african_head_spec.tga */ = {isa = PBXFileReference; lastKnownFileType = file; path = african_head_spec.tga; sourceTree = "<group>"; };
+		6CA87FEE258633CD00BBE4B7 /* african_head_diffuse.tga */ = {isa = PBXFileReference; lastKnownFileType = file; path = african_head_diffuse.tga; sourceTree = "<group>"; };
+		6CA87FEF258633CE00BBE4B7 /* cube.obj */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = cube.obj; sourceTree = "<group>"; };
+		6CA87FF0258633CE00BBE4B7 /* african_head_nm.tga */ = {isa = PBXFileReference; lastKnownFileType = file; path = african_head_nm.tga; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -87,6 +91,10 @@
 		6C7EA9D12560DDCE00B9364F /* obj */ = {
 			isa = PBXGroup;
 			children = (
+				6CA87FEE258633CD00BBE4B7 /* african_head_diffuse.tga */,
+				6CA87FF0258633CE00BBE4B7 /* african_head_nm.tga */,
+				6CA87FED258633CD00BBE4B7 /* african_head_spec.tga */,
+				6CA87FEF258633CE00BBE4B7 /* cube.obj */,
 				6C7EA9DB2560DF7000B9364F /* african_head.obj */,
 			);
 			path = obj;

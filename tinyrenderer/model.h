@@ -20,7 +20,7 @@ private:
     std::vector<vec2> uv_;    // uv 贴图向量
     TGAImage diffusemap_;      // 纹理 map
     TGAImage normalmap_;       // 法线贴图
-    TGAImage specularmap_;
+    TGAImage specularmap_;     // 镜面贴图
     void load_texture(std::string filename, const char *suffix, TGAImage &img);
 public:
     Model(const char *filename);
@@ -34,6 +34,7 @@ public:
     vec3 vert(int iface, int nvert);
     vec2 uv(int iface, int nvert);
     TGAColor diffuse(vec2 uv);
+    float specular(vec2 uv);
     std::vector<int> face(int idx);
 };
 
