@@ -19,11 +19,11 @@ Model *model = NULL;
 const int WIDTH  = 800;
 const int HEIGHT = 800;
 
-vec3 light_dir(1, 1, 1);
+vec3 light_dir(1, 1, 1); // light source
 vec3 camera(0, 0, 3);
-vec3 eye(1, 1, 3);
-vec3 center(0, 0, 0);
-vec3 up(0, 1, 0);
+vec3 eye(1, 1, 3);       // camera position
+vec3 center(0, 0, 0);    // camera direction
+vec3 up(0, 1, 0);        // camera up vector
 
 
 extern mat<4,4> ModelView;
@@ -77,9 +77,10 @@ void line(vec3 p0, vec3 p1, TGAImage &image, TGAColor color) {
 
 struct GouraudShader : public IShader {
     // written by vertex shader, read by fragment shader
-    mat<2,3> varying_uv;
-    mat<4,4> uniform_M;   //  Projection * ModelView
-    mat<4,4> uniform_MIT; // (Projection * ModelView).invert_transpose()
+    vec3 l;               // light direction in normalized device coordinates
+    mat<2,3> varying_uv;  // triangle uv coordinates, written by the vertex shader, read by the fragment shader
+    mat<3,3> varying_nrm; // normal per vertex to be interpolated by FS
+    mat<3,3> ndc_tri;     // triangle in normalized device coordinates
 
     virtual vec4 vertex(int iface, int nthvert) {
         // 从 .obj 文件读取三角形顶点数据
@@ -88,19 +89,53 @@ struct GouraudShader : public IShader {
         gl_Vertex = Viewport * Projection * ModelView * gl_Vertex;
         // 获取顶点的贴图位置信息
         varying_uv.set_col(nthvert, model->uv(iface, nthvert));
+        // 􏳻􏰓􏰔􏰪􏰫􏰇􏳼􏳽􏳾􏰪􏰫􏳻􏰓􏰔􏰪􏰫􏰇􏳼􏳽􏳾􏰪􏰫􏳻􏰓􏰔􏰪􏰫􏰇􏳼􏳽􏳾􏰪􏰫法线贴图读到的法线 * 变换矩阵的逆转置矩阵
+        varying_nrm.set_col(nthvert, proj<3>((Projection * ModelView).invert_transpose() * embed<4>(model->normal(iface, nthvert), 0.f)));
+        // 对 gl_Vertex 归一化
+        ndc_tri.set_col(nthvert, proj<3>(gl_Vertex / gl_Vertex[3]));
         return gl_Vertex;
     }
 
     virtual bool fragment(vec3 bar, TGAColor &color) {
         // 因为要做插值，所以光照和贴图都要乘以重心坐标（bar 是重心坐标）
         vec2 uv = varying_uv * bar;
+        vec3 bn = (varying_nrm * bar).normalize();
         
-        // 读取法线贴图中的法线信息
-        vec3 n = proj<3>(uniform_MIT * embed<4>(model->normal(uv))).normalize();
-        vec3 l = proj<3>(uniform_M * embed<4>(light_dir)).normalize();
-        vec3 r = (n * (n * l * 2.f) - l).normalize(); // reflected light
+        // 从切线空间贴图求解法线
+        // 数学推导可见：https://github.com/ssloy/tinyrenderer/wiki/Lesson-6bis-tangent-space-normal-mapping
+        // 用三角形的三个特殊点（三个顶点 P_0、P_1、P_2）计算出 A -> AI -> B
+        // (P_0->P_1)_x  (P_0->P_1)_y  (P_0->P_1)_z
+        // (P_0->P_2)_x  (P_0->P_2)_y  (P_0->P_2)_z
+        //         bn_x          bn_y          bn_z
+        mat<3,3> A;
+        A[0] = ndc_tri.col(1) - ndc_tri.col(0);
+        A[1] = ndc_tri.col(2) - ndc_tri.col(0);
+        A[2] = bn;
+        
+        // AI 是 A 的逆矩阵
+        mat<3,3> AI = A.invert();
+        
+        vec3 i = AI * vec3(varying_uv[0][1] - varying_uv[0][0], varying_uv[0][2] - varying_uv[0][0], 0);
+        vec3 j = AI * vec3(varying_uv[1][1] - varying_uv[1][0], varying_uv[1][2] - varying_uv[1][0], 0);
+        
+        // 切线空间的基
+        // 这里的 B 其实就是 TBN_World 矩阵
+        mat<3,3> B;
+        B.set_col(0, i.normalize());
+        B.set_col(1, j.normalize());
+        B.set_col(2, bn);
+        
+        // 光照
+        vec3 l = proj<3>(Projection * ModelView * embed<4>(light_dir)).normalize();
+        
+        // 法线（做了一个基变换，切线空间基向量 * 切线空间的法线向量，得到的是世界坐标系下的法线向量）
+        vec3 n = (B * model->normal(uv)).normalize();
+        
+        // reflected light direction
+        vec3 r = (n * (n * l * 2.f) - l).normalize();
         
         // 镜面高亮
+        // specular intensity, note that the camera lies on the z-axis (in ndc), therefore simple r.z
         float spec = pow(std::max<float>(r.z, 0.0f), model->specular(uv));
         // 漫反射
         float diff = std::max<float>(0.f, n * l);
@@ -142,8 +177,6 @@ void drawModelTriangle() {
     
     // 遍历所有三角形
     GouraudShader shader;
-    shader.uniform_M   =  Projection * ModelView;
-    shader.uniform_MIT = (Projection * ModelView).invert_transpose();
     for (int i = 0; i < model->nfaces(); i++) {
         vec4 screen_coords[3];
         for (int j = 0; j < 3; j++) {
@@ -155,7 +188,7 @@ void drawModelTriangle() {
     
     frame.flip_vertically();
     zbuffer.flip_vertically();
-    frame.write_tga_file("output/lesson06_specular_mapping.tga");
+    frame.write_tga_file("output/lesson06_tangent_space_normal_mapping.tga");
 //    zbuffer.write_tga_file("output/lesson06_zbuffer.tga");
     
     delete model;
