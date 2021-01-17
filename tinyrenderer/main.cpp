@@ -17,77 +17,120 @@ Model *model = NULL;
 const int width  = 800;
 const int height = 800;
 
-// 思路很简单，点连成线
-void line(int x0, int y0, int x1, int y1, TGAImage &image, TGAColor color) {
-    // 处理比较陡的线：交换 x y 位置
-    bool steep = false;
-    if (std::abs(x0 - x1)<std::abs(y0 - y1)) {
-        std::swap(x0, y0);
-        std::swap(x1, y1);
-        steep = true;
-    }
-    // 处理 x0 > x1 的情况
-    if (x0 > x1) {
-        std::swap(x0, x1);
-        std::swap(y0, y1);
-    }
-    // 缓存偏移量
-    int dx = x1-x0;
-    int dy = y1-y0;
-    // 存储误差
-    // float derror = std::abs(dy / float(dx)); // 每次循环增加的小误差
-    // float error = 0; // 累积误差
-    // 浮点运算肯定没有 int 快，我们想办法去掉浮点运算
-    int derror2 = std::abs(dy) * 2;
-    int error2 = 0;
-    int y = y0;
-    for (int x=x0; x<=x1; x++) {
-        if (steep) {
-            image.set(y, x, color);
-        } else {
-            image.set(x, y, color);
-        }
-        // 误差的处理：每次误差大于一个像素时，y 就要进位 1，相应的累积误差也要减小 1
-        // error += derror;
-        // if (error > .5) {
-            // y += (y1 > y0 ? 1 : -1);
-            // error -= 1.;
-        // }
-        error2 += derror2;
-        if (error2 > dx) {
-            y += (y1 > y0 ? 1 : -1);
-            error2 -= dx * 2;
+// Bresenham’s 直线算法
+void line(int x1, int y1, int x2, int y2, TGAImage &image, TGAColor color) {
+    // 处理斜率大于 1 的直线
+    int y = y1;
+    int eps = 0;
+    int dx = x2 - x1;
+    int dy = y2 - y1;
+    
+    for (int x = x1; x <= x2; x++) {
+        image.set(y, x, color);
+
+        eps += dy;
+        // 这里用位运算 <<1 代替 *2
+        if((eps << 1) >= dx)  {
+            y++;
+            eps -= dx;
         }
     }
 }
 
-int main(int argc, char** argv) {
-//        TGAImage image(100, 100, TGAImage::RGB);
-//        line(13, 20, 80, 40, image, white);
-//        line(20, 13, 40, 80, image, red);
-//        line(80, 40, 13, 20, image, red);
-        if (2 == argc) {
-            model = new Model(argv[1]);
-        } else {
-            model = new Model("obj/african_head.obj");
-        }
-    
-        TGAImage image(width, height, TGAImage::RGB);
-        for (int i = 0; i < model->nfaces(); i++) {
-            std::vector<int> face = model->face(i);
-            for (int j = 0; j < 3; j++) {
-                Vec3f v0 = model->vert(face[j]);
-                Vec3f v1 = model->vert(face[(j + 1) % 3]);
-                int x0 = (v0.x + 1.) * width / 2.;
-                int y0 = (v0.y + 1.) * height / 2.;
-                int x1 = (v1.x + 1.) * width / 2.;
-                int y1 = (v1.y + 1.) * height / 2.;
-                line(x0, y0, x1, y1, image, white);
-            }
-        }
+// DDA 算法
+// 缺点：涉及大量的浮点运算
+void lineDDA(int x1, int y1, int x2, int y2, TGAImage &image, TGAColor color) {
+    float x = x1;
+    float y = y1;
+    int dx = x2 - x1;
+    int dy = y2 - y1;
+    float step;
+    float dlx, dly;
 
-        image.flip_vertically();
-        image.write_tga_file("output.tga");
-        delete model;
-        return 0;
+    // 根据 dx 和 dy 的长度决定基准
+    if (std::abs(dx) >= std::abs(dy)) {
+      step = std::abs(dx);
+    } else {
+      step = std::abs(dy);
+    }
+    
+    dlx = dx / step;
+    dly = dy / step;
+    
+    for (int i=1; i<step; i++) {
+      image.set(x, y, color);
+      x = x + dlx;
+      y = y + dly;
+    }
+}
+
+void drawDDALine() {
+    TGAImage image(width, height, TGAImage::RGB);
+    
+    lineDDA(400, 400, 800, 600, image, white);
+    lineDDA(400, 400, 600, 800, image, white);
+    lineDDA(400, 400, 200, 800, image, white);
+    lineDDA(400, 400,   0, 600, image, white);
+    lineDDA(400, 400,   0, 200, image, white);
+    lineDDA(400, 400, 200,   0, image, white);
+    lineDDA(400, 400, 600,   0, image, white);
+    lineDDA(400, 400, 800, 200, image, white);
+    lineDDA(  0, 400, 800, 400, image, white);
+    lineDDA(400,   0, 400, 800, image, white);
+    
+    image.flip_vertically();
+    image.write_tga_file("output/day_01_line_dda.tga");
+}
+
+void drawBresenhamLine() {
+    TGAImage image(width, height, TGAImage::RGB);
+    
+    line(400, 400, 800, 600, image, white);
+    line(400, 400, 600, 800, image, white);
+    line(400, 400, 200, 800, image, white);
+    line(400, 400,   0, 600, image, white);
+    line(400, 400,   0, 200, image, white);
+    line(400, 400, 200,   0, image, white);
+    line(400, 400, 600,   0, image, white);
+    line(400, 400, 800, 200, image, white);
+    line(  0, 400, 800, 400, image, white);
+    line(400,   0, 400, 800, image, white);
+    
+    image.flip_vertically();
+    image.write_tga_file("output/day_01_line_bresenham.tga");
+}
+
+void drawObj() {
+    model = new Model("obj/african_head.obj");
+    
+    TGAImage image(width, height, TGAImage::RGB);
+    
+    // 循环模型里的所有三角形
+    for (int i = 0; i < model->nfaces(); i++) {
+        std::vector<int> face = model->face(i);
+        
+        // 循环三角形三个顶点，每两个顶点连一条线
+        for (int j = 0; j < 3; j++) {
+            Vec3f v0 = model->vert(face[j]);
+            Vec3f v1 = model->vert(face[(j + 1) % 3]);
+            int x0 = (v0.x + 1.) * width / 2.;
+            int y0 = (v0.y + 1.) * height / 2.;
+            int x1 = (v1.x + 1.) * width / 2.;
+            int y1 = (v1.y + 1.) * height / 2.;
+            line(x0, y0, x1, y1, image, white);
+        }
+    }
+
+    image.flip_vertically();
+    image.write_tga_file("output/day_01_line_obj.tga");
+    
+    delete model;
+}
+
+int main(int argc, char** argv) {
+    drawDDALine();
+    drawBresenhamLine();
+//    drawObj();
+
+    return 0;
 }
