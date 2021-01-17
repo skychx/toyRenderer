@@ -18,20 +18,43 @@ const int width  = 800;
 const int height = 800;
 
 // Bresenham’s 直线算法
+// 具体实现参考 https://www.wikiwand.com/en/Bresenham%27s_line_algorithm#/All_cases
 void line(int x1, int y1, int x2, int y2, TGAImage &image, TGAColor color) {
-    // 处理斜率大于 1 的直线
+    // 处理斜率的绝对值大于 1 的直线
+    bool steep = false;
+    if (std::abs(x1-x2) < std::abs(y1-y2)) {
+        std::swap(x1, y1);
+        std::swap(x2, y2);
+        steep = true;
+    }
+    // 交换起点终点的坐标
+    if (x1 > x2) {
+        std::swap(x1, x2);
+        std::swap(y1, y2);
+    }
     int y = y1;
     int eps = 0;
     int dx = x2 - x1;
     int dy = y2 - y1;
+    int yi = 1;
+    
+    // 处理 [-1, 0] 范围内的斜率
+    if (dy < 0) {
+        yi = -1;
+        dy = -dy;
+    }
     
     for (int x = x1; x <= x2; x++) {
-        image.set(y, x, color);
+        if (steep) {
+            image.set(y, x, color);
+        } else {
+            image.set(x, y, color);
+        }
 
         eps += dy;
         // 这里用位运算 <<1 代替 *2
         if((eps << 1) >= dx)  {
-            y++;
+            y = y + yi;
             eps -= dx;
         }
     }
@@ -79,7 +102,7 @@ void drawDDALine() {
     lineDDA(400,   0, 400, 800, image, white);
     
     image.flip_vertically();
-    image.write_tga_file("output/day_01_line_dda.tga");
+    image.write_tga_file("output/day_02_line_dda.tga");
 }
 
 void drawBresenhamLine() {
@@ -97,7 +120,7 @@ void drawBresenhamLine() {
     line(400,   0, 400, 800, image, white);
     
     image.flip_vertically();
-    image.write_tga_file("output/day_01_line_bresenham.tga");
+    image.write_tga_file("output/day_02_line_bresenham.tga");
 }
 
 void drawObj() {
@@ -122,7 +145,7 @@ void drawObj() {
     }
 
     image.flip_vertically();
-    image.write_tga_file("output/day_01_line_obj.tga");
+    image.write_tga_file("output/day_02_line_obj.tga");
     
     delete model;
 }
@@ -130,7 +153,7 @@ void drawObj() {
 int main(int argc, char** argv) {
     drawDDALine();
     drawBresenhamLine();
-//    drawObj();
+    drawObj();
 
     return 0;
 }
