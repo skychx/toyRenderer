@@ -136,10 +136,15 @@ void drawObj() {
         for (int j = 0; j < 3; j++) {
             Vec3f v0 = model->vert(face[j]);
             Vec3f v1 = model->vert(face[(j + 1) % 3]);
+
+            // 因为模型空间取值范围是 [-1, 1]^3，我们要把模型坐标平移到屏幕坐标中
+            // 下面 (point + 1) * width(height) / 2 的操作学名为视口变换（Viewport Transformation）
             int x0 = (v0.x + 1.) * width / 2.;
             int y0 = (v0.y + 1.) * height / 2.;
             int x1 = (v1.x + 1.) * width / 2.;
             int y1 = (v1.y + 1.) * height / 2.;
+
+            // 画线
             line(x0, y0, x1, y1, image, white);
         }
     }
