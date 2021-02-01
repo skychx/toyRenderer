@@ -65,13 +65,13 @@ void viewport(const int x, const int y, const int w, const int h) {
 // 利用重心坐标求解，返回三角形的重心坐标
 vec3 barycentric(vec2 A, vec2 B, vec2 C, vec2 P) {
 
-    vec3 x(C[0] - A[0], B[0] - A[0], A[0] - P[0]); // AB AC PA 在 x 上的分量
-    vec3 y(C[1] - A[1], B[1] - A[1], A[1] - P[1]); // AB AC PA 在 y 上的分量
+    vec3 x(C[0] - A[0], B[0] - A[0], A[0] - P[0]);
+    vec3 y(C[1] - A[1], B[1] - A[1], A[1] - P[1]);
 
-    vec3 u = cross(x, y); // u 向量和 x y 点乘都为 0，所以 u 垂直于 xy 平面
+    vec3 u = cross(x, y); // u 向量和 x y 向量的点积为 0，所以 x y 向量叉乘可以得到 u 向量
 
-    // dont forget that u[2] is integer. If it is zero then triangle ABC is degenerate
-    // 根据 u[2] 判断法线是向内的还是向外的，向内的抛弃，向外的保留并归一化
+    // 由于 A, B, C, P 的坐标都是 int 类型，所以 u[2] 必定是 int 类型
+    // 如果 u[2] 为 0，则表示三角形 ABC 退化了（退还为直线 or 一个点），需要对其舍弃
     if (std::abs(u[2]) > 1e-2) {
         return vec3(1.f - (u.x + u.y) / u.z, u.y / u.z, u.x / u.z);
     }
