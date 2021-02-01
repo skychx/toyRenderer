@@ -18,60 +18,19 @@ Model *model = NULL;
 const int width  = 800;
 const int height = 800;
 
-// 思路很简单，点连成线
-void line(int x0, int y0, int x1, int y1, TGAImage &image, TGAColor color) {
-    // 处理比较陡的线：交换 x y 位置
-    bool steep = false;
-    if (std::abs(x0 - x1)<std::abs(y0 - y1)) {
-        std::swap(x0, y0);
-        std::swap(x1, y1);
-        steep = true;
-    }
-    // 处理 x0 > x1 的情况
-    if (x0 > x1) {
-        std::swap(x0, x1);
-        std::swap(y0, y1);
-    }
-    // 缓存偏移量
-    int dx = x1-x0;
-    int dy = y1-y0;
-    // 存储误差
-    // float derror = std::abs(dy / float(dx)); // 每次循环增加的小误差
-    // float error = 0; // 累积误差
-    // 浮点运算肯定没有 int 快，我们想办法去掉浮点运算
-    int derror2 = std::abs(dy) * 2;
-    int error2 = 0;
-    int y = y0;
-    for (int x=x0; x<=x1; x++) {
-        if (steep) {
-            image.set(y, x, color);
-        } else {
-            image.set(x, y, color);
-        }
-        // 误差的处理：每次误差大于一个像素时，y 就要进位 1，相应的累积误差也要减小 1
-        // error += derror;
-        // if (error > .5) {
-            // y += (y1 > y0 ? 1 : -1);
-            // error -= 1.;
-        // }
-        error2 += derror2;
-        if (error2 > dx) {
-            y += (y1 > y0 ? 1 : -1);
-            error2 -= dx * 2;
-        }
-    }
-}
-
-// 利用叉乘判断是否在三角形内部
+// 利用叉乘判断点是否在三角形内部
 bool isInside(Vec2i *pts, Vec2i P) {
+    // 构建出三角形 ABC 三条边的向量
     Vec2i AB(pts[1].x - pts[0].x, pts[1].y - pts[0].y);
     Vec2i BC(pts[2].x - pts[1].x, pts[2].y - pts[1].y);
     Vec2i CA(pts[0].x - pts[2].x, pts[0].y - pts[2].y);
     
+    // 三角形三个顶点和 P 链接形成的向量
     Vec2i AP(P.x - pts[0].x, P.y - pts[0].y);
     Vec2i BP(P.x - pts[1].x, P.y - pts[1].y);
     Vec2i CP(P.x - pts[2].x, P.y - pts[2].y);
     
+    // 计算向量叉乘，全为 true 则说明点在三角形内部（这里认为三角形的边也属于三角形内部）
     if((AB^AP) >= 0 && (BC^BP) >= 0 && (CA^CP) >= 0) {
         return true;
     }
@@ -119,7 +78,7 @@ void drawSingleTriangle() {
     triangle(pts, frame, red);
     
     frame.flip_vertically();
-    frame.write_tga_file("output/lesson02_self.tga");
+    frame.write_tga_file("output/day03_cross_product_triangle.tga");
 }
 
 
@@ -178,8 +137,8 @@ int main(int argc, char** argv) {
     } else {
         model = new Model("obj/african_head.obj");
     }
-//    drawSingleTriangle();
-    drawModelTriangle();
+    drawSingleTriangle();
+//    drawModelTriangle();
 
     return 0;
 }
