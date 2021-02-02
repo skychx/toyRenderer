@@ -19,7 +19,7 @@ const int width  = 800;
 const int height = 800;
 
 // 利用叉乘判断点是否在三角形内部
-bool isInside(Vec2i *pts, Vec2i P) {
+Vec3i crossProduct(Vec2i *pts, Vec2i P) {
     // 构建出三角形 ABC 三条边的向量
     Vec2i AB(pts[1].x - pts[0].x, pts[1].y - pts[0].y);
     Vec2i BC(pts[2].x - pts[1].x, pts[2].y - pts[1].y);
@@ -30,11 +30,23 @@ bool isInside(Vec2i *pts, Vec2i P) {
     Vec2i BP(P.x - pts[1].x, P.y - pts[1].y);
     Vec2i CP(P.x - pts[2].x, P.y - pts[2].y);
     
-    // 计算向量叉乘，全为 true 则说明点在三角形内部（这里认为三角形的边也属于三角形内部）
-    if((AB^AP) >= 0 && (BC^BP) >= 0 && (CA^CP) >= 0) {
-        return true;
+    return Vec3i(AB^AP, BC^BP, CA^CP);
+}
+
+// 利用重心坐标判断点是否在三角形内部
+Vec3f barycentric(Vec2i *pts, Vec2i P) {
+    Vec3i x(pts[1].x - pts[0].x, pts[2].x - pts[0].x, pts[0].x - P.x);
+    Vec3i y(pts[1].y - pts[0].y, pts[2].y - pts[0].y, pts[0].y - P.y);
+    
+    // u 向量和 x y 向量的点积为 0，所以 x y 向量叉乘可以得到 u 向量
+    Vec3i u = x^y;
+    
+    // 由于 A, B, C, P 的坐标都是 int 类型，所以 u.z 必定是 int 类型，取值范围为 ..., -2, -1, 0, 1, 2, ...
+    // 所以 u.z 绝对值小于 1 意味着三角形退化了，需要舍弃
+    if(std::abs(u.z) < 1) {
+        return Vec3f(-1, 1, 1);
     }
-    return false;
+    return Vec3f(1.f- (u.x+u.y) / (float)u.z, u.x / (float)u.z, u.y / (float)u.z);
 }
 
 // 自己实现的三角形光栅化函数
@@ -46,9 +58,9 @@ void triangle(Vec2i *pts, TGAImage &image, TGAColor color) {
     Vec2i clamp(image.get_width() - 1, image.get_height() - 1); // 图片的边界
     // 查找包围盒边界
     for (int i = 0; i < 3; i++) {
-        // 第一层循环，遍历 pts
+        // 第一层循环，遍历三角形的三个顶点
         for (int j = 0; j < 2; j++) {
-            // 第二层循环，遍历 Vec2i
+            // 第二层循环，根据顶点数值缩小包围盒的范围
             boxmin.x = std::max(0,        std::min(boxmin.x, pts[i].x));
             boxmin.y = std::max(0,        std::min(boxmin.y, pts[i].y));
             
@@ -64,9 +76,16 @@ void triangle(Vec2i *pts, TGAImage &image, TGAColor color) {
     Vec2i P;
     for (P.x = boxmin.x; P.x <= boxmax.x; P.x++) {
         for (P.y = boxmin.y; P.y <= boxmax.y; P.y++) {
-            if (isInside(pts, P)) {
-                image.set(P.x, P.y, color);
+            
+            // Vec3i bc_screen  = crossProduct(pts, P);
+            Vec3f bc_screen  = barycentric(pts, P);
+            
+            // bc_screen 某个分量小于 0 则表示此点在三角形外（认为边也是三角形的一部分）
+            if (bc_screen.x<0 || bc_screen.y<0 || bc_screen.z<0) {
+                continue;
             }
+            
+            image.set(P.x, P.y, color);
         }
     }
 }
@@ -78,9 +97,8 @@ void drawSingleTriangle() {
     triangle(pts, frame, red);
     
     frame.flip_vertically();
-    frame.write_tga_file("output/day03_cross_product_triangle.tga");
+    frame.write_tga_file("output/day03_barycentric_triangle.tga");
 }
-
 
 void drawModelTriangle() {
     TGAImage frame(width, height, TGAImage::RGB);
@@ -102,7 +120,7 @@ void drawModelTriangle() {
         std::vector<int> face = model->face(i);
         Vec2i screen_coords[3];
         Vec3f world_coords[3];
-        
+
         // 计算世界坐标和屏幕坐标
         for (int j = 0; j < 3; j++) {
             Vec3f v = model->vert(face[j]);
@@ -110,11 +128,11 @@ void drawModelTriangle() {
             screen_coords[j] = Vec2i((v.x + 1.) * width / 2., (v.y + 1.) * height / 2.);
             world_coords[j]  = v;
         }
-        
+
         // 计算世界坐标中某个三角形的法线（法线 = 三角形任意两条边做叉乘）
         Vec3f n = (world_coords[2] - world_coords[0]) ^ (world_coords[1] - world_coords[0]);
         n.normalize(); // 对 n 做归一化处理
-        
+
         // 三角形法线和光照方向做点乘，点乘值大于 0，说明法线方向和光照方向在同一侧
         // 值越大，说明越多的光照射到三角形上，颜色越白
         float intensity = n * light_dir;
@@ -124,11 +142,10 @@ void drawModelTriangle() {
     }
     
     frame.flip_vertically();
-    frame.write_tga_file("output/lesson02_light_model.tga");
+    frame.write_tga_file("output/day03_light_model.tga");
     
     delete model;
 }
-
 
 
 int main(int argc, char** argv) {
@@ -137,8 +154,8 @@ int main(int argc, char** argv) {
     } else {
         model = new Model("obj/african_head.obj");
     }
-    drawSingleTriangle();
-//    drawModelTriangle();
+//    drawSingleTriangle();
+    drawModelTriangle();
 
     return 0;
 }
