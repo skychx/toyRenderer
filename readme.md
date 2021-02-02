@@ -6,5 +6,6 @@
 
 - [〇、前言](https://supercodepower.com/docs/toy-renderer/index)
 - [一、环境搭建](https://supercodepower.com/docs/toy-renderer/day1-env-setup)
-- [一、画一条线](https://supercodepower.com/docs/toy-renderer/day2-draw-line)
+- [二、画一条线](https://supercodepower.com/docs/toy-renderer/day2-draw-line)
+- [三、画一个三角形](https://supercodepower.com/docs/toy-renderer/day3-draw-triangle)
 
